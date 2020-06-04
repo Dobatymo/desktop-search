@@ -1,0 +1,2 @@
+flask
+genutility[json]>=0.0.37
