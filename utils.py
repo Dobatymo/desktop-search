@@ -5,6 +5,9 @@ from collections import defaultdict, Counter
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
+from pathspec import PathSpec
+from pathspec.patterns import GitWildMatchPattern
+
 if TYPE_CHECKING:
 	from typing import Iterator
 	from genutility.compat.pathlib import Path
@@ -16,6 +19,29 @@ def tokenize_python(path):
 		for type, string, start, end, line in tokenize.generate_tokens(fr.readline):
 			if type == tokenize.NAME:
 				yield string
+
+def _gitignore_iterdir(path, spec):
+
+	try:
+		with (path / ".gitignore").open("r", encoding="utf-8") as fr:
+			patterns = list(fr)
+
+		cpatterns = list(map(GitWildMatchPattern, patterns)) + spec.patterns
+		spec = PathSpec(cpatterns)
+
+	except FileNotFoundError:
+		pass
+
+	for item in path.iterdir():
+		if not spec.match_file(item):
+			if item.is_file():
+				yield item
+			elif item.is_dir():
+				yield from _gitignore_iterdir(item, spec)
+
+def gitignore_iterdir(path, defaultignore=[".git"]):
+	spec = PathSpec(map(GitWildMatchPattern, defaultignore))
+	return _gitignore_iterdir(path, spec)
 
 class InvertedIndex(object):
 
@@ -79,11 +105,17 @@ class Indexer(object):
 		for path in paths:
 			self.paths.append(path)
 
-	def index(self, progress=None):
-		# type: (Callable[[str], Any], ) -> None
+	def index(self, gitignore=False, progressfunc=None):
+		# type: (bool, Callable[[str], Any]) -> None
 
 		for path in self.paths:
-			for filename in path.rglob("*.py"):
+		
+			if gitignore:
+				it = gitignore_iterdir(path)
+			else:
+				it = path.rglob("*")
+		
+			for filename in it:
 				self.invindex.add_document(filename)
-				if progress:
-					progress(filename)
+				if progressfunc:
+					progressfunc(filename)

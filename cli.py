@@ -14,7 +14,7 @@ def main(paths):
 	indexer.add_paths(map(Path, paths))
 
 	with tqdm() as pbar:
-		indexer.index(progress=lambda x: pbar.update(1))
+		indexer.index(progressfunc=lambda x: pbar.update(1))
 
 	try:
 		while True:

@@ -1,6 +1,8 @@
 <html>
 <body>
 
+<h1>Python source code search</h1>
+
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     <ul class=flashes>
@@ -11,10 +13,11 @@
   {% endif %}
 {% endwith %}
 
-<h1>Search for token</h1>
+<h2>Search for token</h2>
 
 <form action="{{ url_for('index') }}" method="post">
 <input type="text" name="token" />
+
 <input type="submit" />
 </form>
 
@@ -26,11 +29,18 @@
 </ul>
 {% endif %}
 
-<h1>Reindex</h1>
+<h2>Reindex</h2>
 
 <form action="{{ url_for('reindex') }}" method="post">
+<label for="gitignore">Honor .gitignore</label>
+<input type="checkbox" id="gitignore" name="gitignore" value="true">
+
 <input type="submit" />
 </form>
+
+<h2>Stats</h2>
+
+{{ stats["files"] }} files and {{ stats["tokens"] }} tokens indexed.
 
 </body>
 </html>
