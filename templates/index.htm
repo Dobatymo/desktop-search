@@ -21,7 +21,10 @@
 <input type="submit" />
 </form>
 
-{% if paths %}
+{% if token %}
+
+{{ paths|length }} results found for <strong>{{ token }}</strong>.
+
 <ul>
 {% for path in paths %}
 <li><a href="">{{path}}</a></li>

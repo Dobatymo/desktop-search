@@ -45,7 +45,7 @@ def index():
 		"tokens": len(invindex.index),
 	}
 
-	return render_template("index.htm", paths=paths, stats=stats)
+	return render_template("index.htm", token=token, paths=paths, stats=stats)
 
 if __name__ == "__main__":
 	app.run(host="localhost", port=8080)

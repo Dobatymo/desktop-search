@@ -80,10 +80,7 @@ class InvertedIndex(object):
 		if sortby not in {"path", "freq"}:
 			raise ValueError(sortby)
 
-		try:
-			docs = self.index[token]
-		except KeyError:
-			return []
+		docs = self.index.get(token, [])  # get() does not insert key into defaultdict
 
 		if sortby == "path":
 			return sorted(self.ids2docs[doc_id] for doc_id, freq in docs)
