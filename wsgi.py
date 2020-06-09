@@ -15,14 +15,13 @@ app.secret_key = os.urandom(24)
 invindex = InvertedIndex()
 indexer = Indexer(invindex)
 
-paths = read_json("paths.json")
-
-indexer.add_paths(map(Path, paths))
-
 @app.route("/reindex", methods=["POST"])
 def reindex():
 
 	gitignore = bool(request.form.get("gitignore", False))
+
+	paths = read_json("paths.json")
+	indexer.paths = list(map(Path, paths))
 
 	with tqdm() as pbar:
 		indexer.index(gitignore=gitignore, progressfunc=lambda x: pbar.update(1))

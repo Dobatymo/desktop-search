@@ -11,6 +11,7 @@ from pathspec.patterns import GitWildMatchPattern
 if TYPE_CHECKING:
 	from typing import Iterator
 	from genutility.compat.pathlib import Path
+	from pathspec import Patterns
 
 def tokenize_python(path):
 	# type: (str, ) -> Iterator[str]
@@ -21,6 +22,7 @@ def tokenize_python(path):
 				yield string
 
 def _gitignore_iterdir(path, spec):
+	# type: (Path, Patterns) -> Iterator[Path]
 
 	try:
 		with (path / ".gitignore").open("r", encoding="utf-8") as fr:
@@ -40,12 +42,21 @@ def _gitignore_iterdir(path, spec):
 				yield from _gitignore_iterdir(item, spec)
 
 def gitignore_iterdir(path, defaultignore=[".git"]):
+	# type: (Path, Sequence[str]) -> Iterator[Path]
+
 	spec = PathSpec(map(GitWildMatchPattern, defaultignore))
 	return _gitignore_iterdir(path, spec)
 
 class InvertedIndex(object):
 
 	def __init__(self):
+		# type: () -> None
+
+		self.clear()
+
+	def clear(self):
+		# type: () -> None
+
 		self.docs2ids = {}
 		self.ids2docs = {}
 		self.index = defaultdict(list)
@@ -93,25 +104,20 @@ class Indexer(object):
 
 	def __init__(self, invindex):
 		self.invindex = invindex
-		self.paths = []
-
-	def add_path(self, path):
-		self.paths.append(path)
-
-	def add_paths(self, paths):
-		for path in paths:
-			self.paths.append(path)
+		self.paths = [] # type: List[Path]
 
 	def index(self, gitignore=False, progressfunc=None):
 		# type: (bool, Callable[[str], Any]) -> None
 
+		self.invindex.clear()
+
 		for path in self.paths:
-		
+
 			if gitignore:
 				it = gitignore_iterdir(path)
 			else:
 				it = path.rglob("*")
-		
+
 			for filename in it:
 				self.invindex.add_document(filename)
 				if progressfunc:
