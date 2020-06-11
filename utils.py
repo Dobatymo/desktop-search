@@ -107,9 +107,15 @@ class Indexer(object):
 		self.paths = [] # type: List[Path]
 
 	def index(self, gitignore=False, progressfunc=None):
-		# type: (bool, Callable[[str], Any]) -> None
+		# type: (bool, Callable[[str], Any]) -> int
+
+		""" Searches Indexer.paths for indexable files and indexes them.
+			Returns the number of files added to the index.
+		"""
 
 		self.invindex.clear()
+
+		docs = 0
 
 		for path in self.paths:
 
@@ -119,6 +125,9 @@ class Indexer(object):
 				it = path.rglob("*")
 
 			for filename in it:
-				self.invindex.add_document(filename)
+				if self.invindex.add_document(filename):
+					docs += 1
 				if progressfunc:
 					progressfunc(filename)
+
+		return docs
