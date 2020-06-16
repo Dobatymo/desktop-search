@@ -3,9 +3,11 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import logging, tokenize
 from collections import defaultdict, Counter
 from operator import itemgetter
+from importlib import import_module
 from typing import TYPE_CHECKING
 
 from genutility.exceptions import assert_choice
+from genutility.file import read_file
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
@@ -16,12 +18,50 @@ if TYPE_CHECKING:
 	from pathspec import Patterns
 
 def tokenize_python(path):
-	# type: (str, ) -> Iterator[str]
+	# type: (str, ) -> Counter
 
-	with tokenize.open(path) as fr:
-		for type, string, start, end, line in tokenize.generate_tokens(fr.readline):
-			if type == tokenize.NAME:
-				yield string
+	c = Counter()
+
+	def asd():
+		with tokenize.open(path) as fr:
+			for type, string, start, end, line in tokenize.generate_tokens(fr.readline):
+				if type == tokenize.NAME:
+					yield string
+	try:
+		c.update(asd())
+	except IndentationError as e:
+		logging.warning("IndentationError in %s: %s", path, e)
+	except tokenize.TokenError as e:
+		logging.warning("TokenError in %s: %s", path, e)
+
+	return c
+
+def tokenize_javascript(path):
+	# type: (str, ) -> Counter
+
+	#from slimit.lexer import Lexer
+	from calmjs.parse.lexers.es5 import Lexer
+	from calmjs.parse.exceptions import ECMASyntaxError
+	c = Counter()
+
+	def asd():
+		lexer = Lexer()
+
+		content = read_file(path, "rt", encoding="utf-8")
+		lexer.input(content)
+
+		for token in lexer:
+			if token.type == "ID":
+				yield token.value
+
+	try:
+		c.update(asd())
+	except UnicodeDecodeError:
+		logging.warning("Skipping %s: file is not valid utf-8", path)
+	except ECMASyntaxError:
+		logging.warning("Skipping %s: file is not valid ES5", path)
+
+	return c
 
 def _gitignore_iterdir(path, spec):
 	# type: (Path, Patterns) -> Iterator[Path]
@@ -49,10 +89,33 @@ def gitignore_iterdir(path, defaultignore=[".git"]):
 	spec = PathSpec(map(GitWildMatchPattern, defaultignore))
 	return _gitignore_iterdir(path, spec)
 
+def try_import(name, package=None):
+	try:
+		return import_module(name, package)
+	except ImportError:
+		return None
+
 class InvertedIndex(object):
 
 	def __init__(self):
 		# type: () -> None
+
+		self.modules = {
+			".py": ([], []),
+			".js": (["calmjs"], ["calmjs.parse"]),
+		}
+
+		self.tokenizers = {
+			".py": tokenize_python,
+			".js": tokenize_javascript,
+		}
+
+		for k, (modnames, realnames) in self.modules.items():
+			assert len(modnames) == len(realnames)
+			for modname, realname in zip(modnames, realnames):
+				if not try_import(modname):
+					logging.warning("Missing module: %s. Removing handler for: %s", realname, k)
+					self.tokenizers.pop(k, None)
 
 		self.clear()
 
@@ -66,27 +129,20 @@ class InvertedIndex(object):
 	def add_document(self, path):
 		# type: (Path, ) -> int
 
-		freqs = Counter()
+		ret = 0
 
-		if path.suffix == ".py":
+		try:
+			freqs = self.tokenizers[path.suffix](path)
+		except KeyError:
+			logging.debug("Ignoring %s", path)
+		else:
 			doc_id = self.docs2ids.setdefault(path, len(self.docs2ids))
 			self.ids2docs[doc_id] = path
+			for token, freq in freqs.items():
+				self.index[token].append((doc_id, freq))
+			ret = len(freqs)
 
-			try:
-				freqs.update(tokenize_python(path))
-				for token, freq in freqs.items():
-					self.index[token].append((doc_id, freq))
-			except IndentationError as e:
-				logging.warning("IndentationError in %s: %s", path, e)
-			except tokenize.TokenError as e:
-				logging.warning("TokenError in %s: %s", path, e)
-
-		# ".js" pip install pyjsparser
-
-		else:
-			logging.debug("Ignoring %s", path)
-
-		return len(freqs)
+		return ret
 
 	def search_token(self, token, sortby="path"):
 		# type: (str, str) -> List[Path]

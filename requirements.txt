@@ -3,3 +3,6 @@ genutility[json]>=0.0.37
 humanize
 pathspec
 tqdm
+
+# optional
+calmjs.parse
