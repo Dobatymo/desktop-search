@@ -99,4 +99,17 @@ def index():
 	return render_template("index.htm", token=token, paths=paths, stats=stats)
 
 if __name__ == "__main__":
-	app.run(host="localhost", port=8080)
+
+	from argparse import ArgumentParser
+	import webbrowser
+
+	parser = ArgumentParser()
+	parser.add_argument("--host", default="localhost")
+	parser.add_argument("--port", default=8080)
+	parser.add_argument("-b", "--open-browser", action="store_true")
+	args = parser.parse_args()
+
+	if args.open_browser:
+		webbrowser.open("http://{}:{}/".format(args.host, args.port))
+
+	app.run(host=args.host, port=args.port)

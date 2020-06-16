@@ -5,11 +5,13 @@ from collections import defaultdict, Counter
 from operator import itemgetter
 from typing import TYPE_CHECKING
 
+from genutility.exceptions import assert_choice
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 if TYPE_CHECKING:
-	from typing import Iterator
+	from typing import Dict, Iterator, List
+
 	from genutility.compat.pathlib import Path
 	from pathspec import Patterns
 
@@ -57,8 +59,8 @@ class InvertedIndex(object):
 	def clear(self):
 		# type: () -> None
 
-		self.docs2ids = {}
-		self.ids2docs = {}
+		self.docs2ids = {}  # type: Dict[Path, int]
+		self.ids2docs = {}  # type: Dict[int, Path]
 		self.index = defaultdict(list)
 
 	def add_document(self, path):
@@ -87,9 +89,9 @@ class InvertedIndex(object):
 		return len(freqs)
 
 	def search_token(self, token, sortby="path"):
+		# type: (str, str) -> List[Path]
 
-		if sortby not in {"path", "freq"}:
-			raise ValueError(sortby)
+		assert_choice("sortby", sortby, {"path", "freq"})
 
 		docs = self.index.get(token, [])  # get() does not insert key into defaultdict
 
@@ -97,8 +99,6 @@ class InvertedIndex(object):
 			return sorted(self.ids2docs[doc_id] for doc_id, freq in docs)
 		elif sortby == "freq":
 			return [self.ids2docs[doc_id] for doc_id, freq in sorted(docs, key=itemgetter(1), reverse=True)]
-		else:
-			assert False
 
 class Indexer(object):
 
