@@ -4,7 +4,7 @@ from plugin import TokenizerPlugin, NoLexerFound
 
 class PythonPlugin(TokenizerPlugin):
 
-	suffixes = [".py"]
+	suffixes = {".py", ".pyw"}
 
 	exceptions = {
 		IndentationError: "IndentationError in {path}: {exc}",
