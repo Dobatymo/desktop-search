@@ -1,11 +1,12 @@
+<!DOCTYPE html>
 <html>
 <body>
 
-<h1>Python source code search</h1>
+<h1>Desktop source code search</h1>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
-    <ul class=flashes>
+    <ul class="flashes">
     {% for category, message in messages %}
       <li class="{{ category }}">{{ message }}</li>
     {% endfor %}
@@ -26,8 +27,8 @@
 {{ paths|length }} results found for <strong>{{ token }}</strong>.
 
 <ul>
-{% for path in paths %}
-<li><a href="{{ url_for('open_file', path=path) }}">{{path}}</a></li>
+{% for path, freq in paths %}
+<li><a href="{{ url_for('open_file', path=path) }}">{{path}}</a> ({{freq}})</li>
 {% endfor %}
 </ul>
 {% endif %}
@@ -36,8 +37,9 @@
 
 <form action="{{ url_for('reindex') }}" method="post">
 <label for="gitignore">Honor .gitignore</label>
-<input type="checkbox" id="gitignore" name="gitignore" value="true">
-
+<input type="checkbox" id="gitignore" name="gitignore" value="true" checked="checked">
+<label for="partial">Modified only</label>
+<input type="checkbox" id="partial" name="partial" value="true" checked="checked">
 <input type="submit" />
 </form>
 

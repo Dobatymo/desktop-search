@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os, subprocess
+import os, subprocess, logging
 from datetime import timedelta
+from collections import Counter
 
 import humanize
 from tqdm import tqdm
@@ -9,7 +10,6 @@ from flask import Flask, render_template, request, flash, redirect, url_for
 from genutility.compat.pathlib import Path
 from genutility.json import read_json
 from genutility.time import MeasureTime
-from genutility.pickle import read_pickle, write_pickle
 
 from utils import InvertedIndex, Indexer
 
@@ -19,11 +19,13 @@ app.secret_key = os.urandom(24)
 DEFAULT_INDEX_FILE = "index.p"
 DEFAULT_PATHS = []
 DEFAULT_OPEN = "edit \"{path}\""
+DEFAULT_EXTENSIONS = []
 
 DEFAULT_CONFIG = {
 	"index-file": DEFAULT_INDEX_FILE,
 	"paths": DEFAULT_PATHS,
 	"open": DEFAULT_OPEN,
+	"extensions": DEFAULT_EXTENSIONS,
 }
 
 def read_config():
@@ -37,7 +39,7 @@ def read_config():
 config = read_config()
 
 try:
-	invindex = read_pickle(config.get("index-file", DEFAULT_INDEX_FILE))
+	invindex = InvertedIndex.load(config.get("index-file", DEFAULT_INDEX_FILE))
 except FileNotFoundError:
 	invindex = InvertedIndex()
 
@@ -60,6 +62,7 @@ def open_file(path):
 def reindex():
 	global config
 
+	partial = bool(request.form.get("partial", False))
 	gitignore = bool(request.form.get("gitignore", False))
 	config = read_config()
 	paths = config.get("paths", DEFAULT_PATHS)
@@ -69,17 +72,29 @@ def reindex():
 		redirect(url_for("index"))
 
 	indexer.paths = list(map(Path, paths))
+	suffixes = set(config.get("extensions", DEFAULT_EXTENSIONS))
+	index_file = config.get("index-file", DEFAULT_INDEX_FILE)
 
 	with tqdm() as pbar, MeasureTime() as seconds:
-		docs = indexer.index(gitignore=gitignore, progressfunc=lambda x: pbar.update(1))
+		docs = indexer.index(suffixes, partial, gitignore, progressfunc=lambda x: pbar.update(1))
 
 		delta = humanize.naturaldelta(timedelta(seconds=seconds.get()))
-		flash("Indexed {} documents in {}.".format(docs, delta), "info")
+		flash("Indexed {} new documents in {}.".format(docs, delta), "info")
 
-		index_file = config.get("index-file", DEFAULT_INDEX_FILE)
-		write_pickle(indexer.invindex, index_file)
+	indexer.save_index(index_file)
 
 	return redirect(url_for("index"))
+
+@app.route("/statistics", methods=["GET"])
+def statistics():
+
+	stats = {
+		"files": len(invindex.ids2docs),
+		"tokens": len(invindex.index),
+		"suffixes": Counter(path.suffix for path in invindex.docs2ids),
+	}
+
+	return render_template("statistics.htm", stats=stats)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -107,7 +122,13 @@ if __name__ == "__main__":
 	parser.add_argument("--host", default="localhost")
 	parser.add_argument("--port", default=8080)
 	parser.add_argument("-b", "--open-browser", action="store_true")
+	parser.add_argument("-v", "--verbose", action="store_true")
 	args = parser.parse_args()
+
+	if args.verbose:
+		logging.basicConfig(level=logging.DEBUG)
+	else:
+		logging.basicConfig(level=logging.INFO)
 
 	if args.open_browser:
 		webbrowser.open("http://{}:{}/".format(args.host, args.port))

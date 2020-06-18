@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flashes">
+    {% for category, message in messages %}
+      <li class="{{ category }}">{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<h1>Stats</h1>
+
+{{ stats["files"] }} files and {{ stats["tokens"] }} tokens indexed.
+File types:
+<ul>
+{% for suffix, count in stats["suffixes"].most_common() %}
+<li>{{suffix}} ({{count}})</li>
+{% endfor %}
+</ul>
+
+</body>
+</html>

@@ -6,3 +6,4 @@ tqdm
 
 # optional
 calmjs.parse
+pygments

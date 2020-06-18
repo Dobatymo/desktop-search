@@ -1,13 +1,14 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import logging, tokenize
-from collections import defaultdict, Counter
+from collections import defaultdict
 from operator import itemgetter
 from importlib import import_module
 from typing import TYPE_CHECKING
 
 from genutility.exceptions import assert_choice
 from genutility.file import read_file
+from genutility.pickle import read_pickle, write_pickle
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
@@ -17,51 +18,8 @@ if TYPE_CHECKING:
 	from genutility.compat.pathlib import Path
 	from pathspec import Patterns
 
-def tokenize_python(path):
-	# type: (str, ) -> Counter
-
-	c = Counter()
-
-	def asd():
-		with tokenize.open(path) as fr:
-			for type, string, start, end, line in tokenize.generate_tokens(fr.readline):
-				if type == tokenize.NAME:
-					yield string
-	try:
-		c.update(asd())
-	except IndentationError as e:
-		logging.warning("IndentationError in %s: %s", path, e)
-	except tokenize.TokenError as e:
-		logging.warning("TokenError in %s: %s", path, e)
-
-	return c
-
-def tokenize_javascript(path):
-	# type: (str, ) -> Counter
-
-	#from slimit.lexer import Lexer
-	from calmjs.parse.lexers.es5 import Lexer
-	from calmjs.parse.exceptions import ECMASyntaxError
-	c = Counter()
-
-	def asd():
-		lexer = Lexer()
-
-		content = read_file(path, "rt", encoding="utf-8")
-		lexer.input(content)
-
-		for token in lexer:
-			if token.type == "ID":
-				yield token.value
-
-	try:
-		c.update(asd())
-	except UnicodeDecodeError:
-		logging.warning("Skipping %s: file is not valid utf-8", path)
-	except ECMASyntaxError:
-		logging.warning("Skipping %s: file is not valid ES5", path)
-
-	return c
+class InvalidDocument(KeyError):
+	pass
 
 def _gitignore_iterdir(path, spec):
 	# type: (Path, Patterns) -> Iterator[Path]
@@ -89,33 +47,62 @@ def gitignore_iterdir(path, defaultignore=[".git"]):
 	spec = PathSpec(map(GitWildMatchPattern, defaultignore))
 	return _gitignore_iterdir(path, spec)
 
-def try_import(name, package=None):
-	try:
-		return import_module(name, package)
-	except ImportError:
-		return None
-
 class InvertedIndex(object):
 
-	def __init__(self):
+	lexers = {
+		"calmjs": "CalmjsPlugin",
+		"python": "PythonPlugin",
+		"pygments": "PygmentsPlugin",
+	}
+
+	@classmethod
+	def load(cls, path):
+		d = read_pickle(path)
+
+		ret = cls()
+		ret.docs2ids = d["docs2ids"]
+		ret.ids2docs = d["ids2docs"]
+		ret.index = d["index"]
+		ret.keep_docs = d["keep_docs"]
+		ret.doc_freqs = d["doc_freqs"]
+
+		return ret
+
+	def save(self, path):
+		write_pickle({
+			"docs2ids": self.docs2ids,
+			"ids2docs": self.ids2docs,
+			"index": self.index,
+			"keep_docs": self.keep_docs,
+			"doc_freqs": self.doc_freqs,
+		}, path)
+
+	def __init__(self, keep_docs=True):
 		# type: () -> None
 
-		self.modules = {
-			".py": ([], []),
-			".js": (["calmjs"], ["calmjs.parse"]),
-		}
+		""" Set `keep_docs=False` to improve memory usage,
+			but decrease `remove_document()` performance.
+		"""
 
-		self.tokenizers = {
-			".py": tokenize_python,
-			".js": tokenize_javascript,
-		}
+		self.keep_docs = keep_docs
+		self.tokenizers = {}  # type: Dict[str, TokenizerPlugin]
 
-		for k, (modnames, realnames) in self.modules.items():
-			assert len(modnames) == len(realnames)
-			for modname, realname in zip(modnames, realnames):
-				if not try_import(modname):
-					logging.warning("Missing module: %s. Removing handler for: %s", realname, k)
-					self.tokenizers.pop(k, None)
+		for modname, clsname in self.lexers.items():
+			try:
+				module = import_module("plugins.{}".format(modname))
+			except ImportError as e:
+				logging.warning("Could not import %s: %s", modname, e)
+				continue
+
+			obj = getattr(module, clsname)()
+			for suffix in obj.suffixes:
+				try:
+					obj = self.tokenizers[suffix]
+					logging.warning("%s already handled by plugins/%s", suffix, modname)
+				except KeyError:
+					self.tokenizers[suffix] = obj
+
+		logging.info("Found lexers for: [%s]", ", ".join(self.tokenizers.keys()))
 
 		self.clear()
 
@@ -124,7 +111,8 @@ class InvertedIndex(object):
 
 		self.docs2ids = {}  # type: Dict[Path, int]
 		self.ids2docs = {}  # type: Dict[int, Path]
-		self.index = defaultdict(list)
+		self.index = defaultdict(dict)  # type: Dict[str, Dict[int, int]]
+		self.doc_freqs = {}  # type: Dict[int, Dict[str, int]]
 
 	def add_document(self, path):
 		# type: (Path, ) -> int
@@ -132,44 +120,72 @@ class InvertedIndex(object):
 		ret = 0
 
 		try:
-			freqs = self.tokenizers[path.suffix](path)
+			lexer = self.tokenizers[path.suffix]
 		except KeyError:
 			logging.debug("Ignoring %s", path)
 		else:
+			freqs = lexer.tokenize(path)
 			doc_id = self.docs2ids.setdefault(path, len(self.docs2ids))
 			self.ids2docs[doc_id] = path
+			if self.keep_docs:
+				self.doc_freqs[doc_id] = freqs
 			for token, freq in freqs.items():
-				self.index[token].append((doc_id, freq))
+				self.index[token][doc_id] = freq
 			ret = len(freqs)
 
 		return ret
 
+	def remove_document(self, path):
+		# type: (Path, ) -> None
+
+		""" If `InvertedIndex` was created with `keep_docs=True`,
+			the complexity is O(number of unique tokens in document).
+			If created with `keep_docs=False`,
+			the complexity is O(number of tokens in index)
+		"""
+
+		try:
+			doc_id = self.docs2ids[path]
+		except KeyError:
+			raise InvalidDocument()
+
+		if self.keep_docs:
+			for token, freq in self.doc_freqs[doc_id].items():
+				del self.index[token][doc_id]
+		else:
+			for token, freqs in self.index.items():
+				freqs.pop(doc_id, None)
+
 	def search_token(self, token, sortby="path"):
-		# type: (str, str) -> List[Path]
+		# type: (str, str) -> List[Tuple[Path, int]]
 
 		assert_choice("sortby", sortby, {"path", "freq"})
 
-		docs = self.index.get(token, [])  # get() does not insert key into defaultdict
+		docs = self.index.get(token, {})  # get() does not insert key into defaultdict
+		paths = ((self.ids2docs[doc_id], freq) for doc_id, freq in docs.items())
 
 		if sortby == "path":
-			return sorted(self.ids2docs[doc_id] for doc_id, freq in docs)
+			return sorted(paths, key=itemgetter(0), reverse=False)
 		elif sortby == "freq":
-			return [self.ids2docs[doc_id] for doc_id, freq in sorted(docs, key=itemgetter(1), reverse=True)]
+			return sorted(paths, key=itemgetter(1), reverse=True)
 
 class Indexer(object):
 
 	def __init__(self, invindex):
 		self.invindex = invindex
 		self.paths = [] # type: List[Path]
+		self.mtimes = {} # type: Dict[Path, int]
 
-	def index(self, gitignore=False, progressfunc=None):
-		# type: (bool, Callable[[str], Any]) -> int
+	def index(self, suffixes=None, partial=True, gitignore=False, progressfunc=None):
+		# type: (Set[str], bool, bool, Callable[[str], Any]) -> int
 
 		""" Searches Indexer.paths for indexable files and indexes them.
 			Returns the number of files added to the index.
 		"""
 
-		self.invindex.clear()
+		if not partial:
+			self.invindex.clear()
+			add = True
 
 		docs = 0
 
@@ -181,9 +197,38 @@ class Indexer(object):
 				it = path.rglob("*")
 
 			for filename in it:
-				if self.invindex.add_document(filename):
-					docs += 1
-				if progressfunc:
-					progressfunc(filename)
+
+				if suffixes:
+					if filename.suffix not in suffixes:
+						continue
+
+				if partial:
+					new_mtime = filename.stat().st_mtime
+
+					try:
+						old_mtime = self.mtimes[filename]
+					except KeyError:
+						self.mtimes[filename] = new_mtime
+						add = True
+					else:
+						if old_mtime == new_mtime:
+							add = False
+						else:
+							try:
+								self.invindex.remove_document(filename)
+							except InvalidDocument:
+								pass
+							self.mtimes[filename] = new_mtime
+							add = True
+
+				if add:
+					if self.invindex.add_document(filename):
+						docs += 1
+					if progressfunc:
+						progressfunc(filename)
 
 		return docs
+
+	def save_index(self, path):
+		# fime: self.mtimes should be saved here as well!
+		self.invindex.save(path)
