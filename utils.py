@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 from genutility.exceptions import assert_choice
 from genutility.file import read_file
-from genutility.pickle import read_pickle, write_pickle
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
@@ -55,27 +54,14 @@ class InvertedIndex(object):
 		"pygments": "PygmentsPlugin",
 	}
 
-	@classmethod
-	def load(cls, path):
-		d = read_pickle(path)
+	def __getstate__(self):
+		state = self.__dict__.copy()
+		del state["tokenizers"]
+		return state
 
-		ret = cls()
-		ret.docs2ids = d["docs2ids"]
-		ret.ids2docs = d["ids2docs"]
-		ret.index = d["index"]
-		ret.keep_docs = d["keep_docs"]
-		ret.doc_freqs = d["doc_freqs"]
-
-		return ret
-
-	def save(self, path):
-		write_pickle({
-			"docs2ids": self.docs2ids,
-			"ids2docs": self.ids2docs,
-			"index": self.index,
-			"keep_docs": self.keep_docs,
-			"doc_freqs": self.doc_freqs,
-		}, path)
+	def __setstate__(self, state):
+		self.__dict__.update(state)
+		self.tokenizers = self._get_tokenizers()
 
 	def __init__(self, keep_docs=True):
 		# type: () -> None
@@ -85,7 +71,16 @@ class InvertedIndex(object):
 		"""
 
 		self.keep_docs = keep_docs
-		self.tokenizers = {}  # type: Dict[str, TokenizerPlugin]
+		self.tokenizers = self._get_tokenizers()
+
+		logging.info("Found lexers for: [%s]", ", ".join(self.tokenizers.keys()))
+
+		self.clear()
+
+	def _get_tokenizers(self):
+		# type: () -> Dict[str, TokenizerPlugin]
+
+		tokenizers = {}  # type: Dict[str, TokenizerPlugin]
 
 		for modname, clsname in self.lexers.items():
 			try:
@@ -97,14 +92,12 @@ class InvertedIndex(object):
 			obj = getattr(module, clsname)()
 			for suffix in obj.suffixes:
 				try:
-					obj = self.tokenizers[suffix]
+					obj = tokenizers[suffix]
 					logging.warning("%s already handled by plugins/%s", suffix, modname)
 				except KeyError:
-					self.tokenizers[suffix] = obj
-
-		logging.info("Found lexers for: [%s]", ", ".join(self.tokenizers.keys()))
-
-		self.clear()
+					tokenizers[suffix] = obj
+		
+		return tokenizers
 
 	def clear(self):
 		# type: () -> None
@@ -228,7 +221,3 @@ class Indexer(object):
 						progressfunc(filename)
 
 		return docs
-
-	def save_index(self, path):
-		# fime: self.mtimes should be saved here as well!
-		self.invindex.save(path)

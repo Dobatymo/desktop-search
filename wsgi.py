@@ -10,6 +10,7 @@ from flask import Flask, render_template, request, flash, redirect, url_for
 from genutility.compat.pathlib import Path
 from genutility.json import read_json
 from genutility.time import MeasureTime
+from genutility.pickle import read_pickle, write_pickle
 
 from utils import InvertedIndex, Indexer
 
@@ -38,12 +39,13 @@ def read_config():
 
 config = read_config()
 
+index_file = config.get("index-file", DEFAULT_INDEX_FILE)
 try:
-	invindex = InvertedIndex.load(config.get("index-file", DEFAULT_INDEX_FILE))
+	indexer = read_pickle(index_file)
+	invindex = indexer.invindex
 except FileNotFoundError:
 	invindex = InvertedIndex()
-
-indexer = Indexer(invindex)
+	indexer = Indexer(invindex)
 
 @app.route("/open/<path:path>", methods=["GET"])
 def open_file(path):
@@ -81,7 +83,7 @@ def reindex():
 		delta = humanize.naturaldelta(timedelta(seconds=seconds.get()))
 		flash("Indexed {} new documents in {}.".format(docs, delta), "info")
 
-	indexer.save_index(index_file)
+	write_pickle(indexer, index_file, safe=True)
 
 	return redirect(url_for("index"))
 
