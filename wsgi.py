@@ -6,7 +6,7 @@ from collections import Counter
 
 import humanize
 from tqdm import tqdm
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import Flask, render_template, request, flash, redirect, url_for, abort
 from genutility.compat.pathlib import Path
 from genutility.json import read_json
 from genutility.time import MeasureTime
@@ -101,10 +101,21 @@ def statistics():
 @app.route("/", methods=["GET", "POST"])
 def index():
 
-	token = request.form.get("token")
+	token = request.form.get("token", "")
+	op = request.form.get("op")
 
 	if token:
-		paths = invindex.search_token(token)
+
+		tokens = token.split(" ")
+		if len(tokens) == 1:
+			paths = invindex.search_token(token)
+		else:
+			if op == "and":
+				paths = invindex.search_tokens_and(tokens)
+			elif op == "or":
+				paths = invindex.search_tokens_or(tokens)
+			else:
+				abort(400)
 	else:
 		paths = []
 

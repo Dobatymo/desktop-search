@@ -149,18 +149,46 @@ class InvertedIndex(object):
 			for token, freqs in self.index.items():
 				freqs.pop(doc_id, None)
 
-	def search_token(self, token, sortby="path"):
-		# type: (str, str) -> List[Tuple[Path, int]]
-
+	def _sorted(self, paths, sortby="path"):
 		assert_choice("sortby", sortby, {"path", "freq"})
-
-		docs = self.index.get(token, {})  # get() does not insert key into defaultdict
-		paths = ((self.ids2docs[doc_id], freq) for doc_id, freq in docs.items())
 
 		if sortby == "path":
 			return sorted(paths, key=itemgetter(0), reverse=False)
 		elif sortby == "freq":
 			return sorted(paths, key=itemgetter(1), reverse=True)
+
+	def search_token(self, token, sortby="path"):
+		# type: (str, str) -> List[Tuple[Path, int]]
+
+		docs = self.index.get(token, {})  # get() does not insert key into defaultdict
+		paths = ((self.ids2docs[doc_id], freq) for doc_id, freq in docs.items())
+
+		return self._sorted(paths, sortby)
+
+	def search_tokens_op(self, tokens, setop, sortby="path"):
+		# type: (Sequence[str], Callable[[*set], set], str) -> List[Tuple[Path, int]]
+
+		freqs = defaultdict(int)
+
+		for token in tokens:
+			for doc_id, freq in self.index.get(token, {}).items():
+				freqs[doc_id] += freq
+
+		sets = tuple(set(self.index.get(token, {}).keys()) for token in tokens)
+		docs = setop(*sets)
+		paths = ((self.ids2docs[doc_id], freqs[doc_id]) for doc_id in docs)
+
+		return self._sorted(paths, sortby)
+
+	def search_tokens_and(self, tokens, sortby="path"):
+		# type: (Sequence[str], str) -> List[Tuple[Path, int]]
+
+		return self.search_tokens_op(tokens, set.intersection, sortby)
+
+	def search_tokens_or(self, tokens, sortby="path"):
+		# type: (Sequence[str], str) -> List[Tuple[Path, int]]
+
+		return self.search_tokens_op(tokens, set.union, sortby)
 
 class Indexer(object):
 
