@@ -17,6 +17,7 @@ from utils import InvertedIndex, Indexer
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+DEFAULT_CONFIG_FILE = "config.json"
 DEFAULT_INDEX_FILE = "index.p"
 DEFAULT_PATHS = []
 DEFAULT_OPEN = "edit \"{path}\""
@@ -29,23 +30,30 @@ DEFAULT_CONFIG = {
 	"extensions": DEFAULT_EXTENSIONS,
 }
 
+config_file = None
+config = None
+invindex = None
+indexer = None
+
 def read_config():
 	# type: () -> dict
 
 	try:
-		return read_json("config.json")
+		return read_json(config_file)
 	except FileNotFoundError:
 		return DEFAULT_CONFIG
 
-config = read_config()
+def read_index():
 
-index_file = config.get("index-file", DEFAULT_INDEX_FILE)
-try:
-	indexer = read_pickle(index_file)
-	invindex = indexer.invindex
-except FileNotFoundError:
-	invindex = InvertedIndex()
-	indexer = Indexer(invindex)
+	index_file = config.get("index-file", DEFAULT_INDEX_FILE)
+	try:
+		indexer = read_pickle(index_file)
+		invindex = indexer.invindex
+	except FileNotFoundError:
+		invindex = InvertedIndex()
+		indexer = Indexer(invindex)
+	
+	return invindex, indexer
 
 @app.route("/open/<path:path>", methods=["GET"])
 def open_file(path):
@@ -130,12 +138,14 @@ if __name__ == "__main__":
 
 	from argparse import ArgumentParser
 	import webbrowser
+	from genutility.args import is_file
 
 	parser = ArgumentParser()
-	parser.add_argument("--host", default="localhost")
-	parser.add_argument("--port", default=8080)
-	parser.add_argument("-b", "--open-browser", action="store_true")
-	parser.add_argument("-v", "--verbose", action="store_true")
+	parser.add_argument("--host", default="localhost", help="Server host")
+	parser.add_argument("--port", type=int, default=8080, help="Server port")
+	parser.add_argument("-b", "--open-browser", action="store_true", help="Open browser after start")
+	parser.add_argument("-v", "--verbose", action="store_true", help="Enable more print output")
+	parser.add_argument("--config", type=is_file, default=DEFAULT_CONFIG_FILE, help="Path to config file")
 	args = parser.parse_args()
 
 	if args.verbose:
@@ -143,7 +153,16 @@ if __name__ == "__main__":
 	else:
 		logging.basicConfig(level=logging.INFO)
 
+	config_file = args.config
+	config = read_config()
+	invindex, indexer = read_index()
+
 	if args.open_browser:
 		webbrowser.open("http://{}:{}/".format(args.host, args.port))
 
 	app.run(host=args.host, port=args.port)
+
+else:
+	config_file = DEFAULT_CONFIG_FILE
+	config = read_config()
+	invindex, indexer = read_index()

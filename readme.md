@@ -17,3 +17,7 @@ Searching itself is super fast. The indexing step is around 5000 files per minut
 ## Dev
 - ctags could be used instead of manual lexing and tag extraction
 - trigram index could be used for non-full-word/partial matching
+
+## Todo
+- search comments (with select natural language)
+- add more tokenizers
