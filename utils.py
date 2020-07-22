@@ -140,7 +140,7 @@ class InvertedIndex(object):
 		try:
 			doc_id = self.docs2ids[path]
 		except KeyError:
-			raise InvalidDocument()
+			raise InvalidDocument(path)
 
 		if self.keep_docs:
 			for token, freq in self.doc_freqs[doc_id].items():
@@ -195,7 +195,7 @@ class Indexer(object):
 	def __init__(self, invindex):
 		self.invindex = invindex
 		self.paths = [] # type: List[Path]
-		self.mtimes = {} # type: Dict[Path, int]
+		self.mtimes = dict() # type: Dict[Path, int]
 
 	def index(self, suffixes=None, partial=True, gitignore=False, progressfunc=None):
 		# type: (Set[str], bool, bool, Callable[[str], Any]) -> int
@@ -206,9 +206,13 @@ class Indexer(object):
 
 		if not partial:
 			self.invindex.clear()
+			self.mtimes = dict()
 			add = True
+		else:
+			touched = set() # type: Set[Path]
 
-		docs = 0
+		docs_added = 0
+		docs_removed = 0
 
 		for path in self.paths:
 
@@ -223,13 +227,13 @@ class Indexer(object):
 					if filename.suffix not in suffixes:
 						continue
 
+				new_mtime = filename.stat().st_mtime
 				if partial:
-					new_mtime = filename.stat().st_mtime
+					touched.add(filename)
 
 					try:
 						old_mtime = self.mtimes[filename]
 					except KeyError:
-						self.mtimes[filename] = new_mtime
 						add = True
 					else:
 						if old_mtime == new_mtime:
@@ -237,15 +241,23 @@ class Indexer(object):
 						else:
 							try:
 								self.invindex.remove_document(filename)
+								docs_removed += 1
 							except InvalidDocument:
 								pass
-							self.mtimes[filename] = new_mtime
 							add = True
 
 				if add:
+					self.mtimes[filename] = new_mtime
 					if self.invindex.add_document(filename):
-						docs += 1
+						docs_added += 1
 					if progressfunc:
 						progressfunc(filename)
 
-		return docs
+		if partial:
+			deleted = self.mtimes.keys() - touched
+			for filename in deleted:
+				self.invindex.remove_document(filename)
+				del self.mtimes[filename]
+				docs_removed += 1
+
+		return docs_added, docs_removed

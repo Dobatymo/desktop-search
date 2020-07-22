@@ -86,10 +86,10 @@ def reindex():
 	index_file = config.get("index-file", DEFAULT_INDEX_FILE)
 
 	with tqdm() as pbar, MeasureTime() as seconds:
-		docs = indexer.index(suffixes, partial, gitignore, progressfunc=lambda x: pbar.update(1))
+		docs_added, docs_removed = indexer.index(suffixes, partial, gitignore, progressfunc=lambda x: pbar.update(1))
 
 		delta = humanize.naturaldelta(timedelta(seconds=seconds.get()))
-		flash("Indexed {} new documents in {}.".format(docs, delta), "info")
+		flash("Indexed {} new documents and removed {} old ones in {}.".format(docs_added, docs_removed, delta), "info")
 
 	write_pickle(indexer, index_file, safe=True)
 
