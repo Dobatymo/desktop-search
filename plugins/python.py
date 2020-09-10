@@ -9,6 +9,7 @@ class PythonPlugin(TokenizerPlugin):
 	exceptions = {
 		IndentationError: "IndentationError in {path}: {exc}",
 		tokenize.TokenError: "TokenError in {path}: {exc}",
+		SyntaxError: "SyntaxError in {path}: {exc}",
 	}
 
 	def _tokenize(self, path):

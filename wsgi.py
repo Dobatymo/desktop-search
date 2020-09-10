@@ -7,25 +7,24 @@ from collections import Counter
 import humanize
 from tqdm import tqdm
 from flask import Flask, render_template, request, flash, redirect, url_for, abort
-from genutility.compat.pathlib import Path
 from genutility.json import read_json
 from genutility.time import MeasureTime
 from genutility.pickle import read_pickle, write_pickle
 
-from utils import InvertedIndex, Indexer
+from utils import InvertedIndex, Indexer, Retriever, valid_groups
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 DEFAULT_CONFIG_FILE = "config.json"
 DEFAULT_INDEX_FILE = "index.p"
-DEFAULT_PATHS = []
+DEFAULT_GROUPS = {}
 DEFAULT_OPEN = "edit \"{path}\""
 DEFAULT_EXTENSIONS = []
 
 DEFAULT_CONFIG = {
 	"index-file": DEFAULT_INDEX_FILE,
-	"paths": DEFAULT_PATHS,
+	"groups": DEFAULT_GROUPS,
 	"open": DEFAULT_OPEN,
 	"extensions": DEFAULT_EXTENSIONS,
 }
@@ -34,6 +33,7 @@ config_file = None
 config = None
 invindex = None
 indexer = None
+retriever = None
 
 def read_config():
 	# type: () -> dict
@@ -52,8 +52,11 @@ def read_index():
 	except FileNotFoundError:
 		invindex = InvertedIndex()
 		indexer = Indexer(invindex)
-	
-	return invindex, indexer
+		retriever = Retriever(invindex)
+
+	retriever = Retriever(invindex)
+	retriever.groups = indexer.groups
+	return invindex, indexer, retriever
 
 @app.route("/open/<path:path>", methods=["GET"])
 def open_file(path):
@@ -75,13 +78,16 @@ def reindex():
 	partial = bool(request.form.get("partial", False))
 	gitignore = bool(request.form.get("gitignore", False))
 	config = read_config()
-	paths = config.get("paths", DEFAULT_PATHS)
+	groups = config.get("groups", DEFAULT_GROUPS)
 
-	if not paths:
-		flash("No paths to index found", "warning")
+	if not groups:
+		flash("No groups to index found", "warning")
 		redirect(url_for("index"))
 
-	indexer.paths = list(map(Path, paths))
+	_groups = valid_groups(groups)
+	indexer.groups = _groups
+	retriever.groups = _groups
+
 	suffixes = set(config.get("extensions", DEFAULT_EXTENSIONS))
 	index_file = config.get("index-file", DEFAULT_INDEX_FILE)
 
@@ -109,19 +115,25 @@ def statistics():
 @app.route("/", methods=["GET", "POST"])
 def index():
 
+	groupnames = config.get("groups", DEFAULT_GROUPS).keys()
+
 	token = request.form.get("token", "")
 	op = request.form.get("op")
+	groupname = request.form.get("groupname")
 
 	if token:
 
+		if groupname not in groupnames:
+			abort(400)
+
 		tokens = token.split(" ")
 		if len(tokens) == 1:
-			paths = invindex.search_token(token)
+			paths = retriever.search_token(groupname, token)
 		else:
 			if op == "and":
-				paths = invindex.search_tokens_and(tokens)
+				paths = retriever.search_tokens_and(groupname, tokens)
 			elif op == "or":
-				paths = invindex.search_tokens_or(tokens)
+				paths = retriever.search_tokens_or(groupname, tokens)
 			else:
 				abort(400)
 	else:
@@ -132,7 +144,7 @@ def index():
 		"tokens": len(invindex.index),
 	}
 
-	return render_template("index.htm", token=token, paths=paths, stats=stats)
+	return render_template("index.htm", token=token, paths=paths, stats=stats, groupnames=groupnames)
 
 if __name__ == "__main__":
 
@@ -155,7 +167,7 @@ if __name__ == "__main__":
 
 	config_file = args.config
 	config = read_config()
-	invindex, indexer = read_index()
+	invindex, indexer, retriever = read_index()
 
 	if args.open_browser:
 		webbrowser.open("http://{}:{}/".format(args.host, args.port))
@@ -165,4 +177,4 @@ if __name__ == "__main__":
 else:
 	config_file = DEFAULT_CONFIG_FILE
 	config = read_config()
-	invindex, indexer = read_index()
+	invindex, indexer, retriever = read_index()

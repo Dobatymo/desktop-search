@@ -17,6 +17,11 @@
 <h2>Search for token</h2>
 
 <form action="{{ url_for('index') }}" method="post">
+<select name="groupname" required="required">
+    {% for name in groupnames %}
+      <option value="{{ name }}">{{ name }}</option>
+    {% endfor %}
+</select>
 <input type="text" name="token" />
 <select name="op" required="required">
   <option value="and" selected="selected">and</option>

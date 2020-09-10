@@ -21,3 +21,6 @@ Searching itself is super fast. The indexing step is around 5000 files per minut
 ## Todo
 - search comments (with select natural language)
 - add more tokenizers
+
+## Optional dependenices
+- `pip install future-fstrings` to handle files which specifiy `coding: future_fstrings`

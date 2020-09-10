@@ -22,7 +22,7 @@ class TokenizerPlugin(object):
 		except Exception as e:
 			for exc, tpl in self.exceptions.items():
 				if isinstance(e, exc):
-					logging.warning(tpl.format(path=path, exc=exc))
+					logging.warning(tpl.format(path=path, exc=e))
 					break
 			else:
 				raise

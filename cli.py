@@ -1,17 +1,19 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 from tqdm import tqdm
-from genutility.compat.pathlib import Path
 from genutility.json import read_json
 
-from utils import InvertedIndex, Indexer
+from utils import InvertedIndex, Indexer, Retriever, valid_groups
 
-def main(paths):
+def main(groups):
 
 	index = InvertedIndex()
 	indexer = Indexer(index)
+	retriever = Retriever(index)
 
-	indexer.add_paths(map(Path, paths))
+	_groups = valid_groups(groups)
+	indexer.groups = _groups
+	retriever.groups = _groups
 
 	with tqdm() as pbar:
 		indexer.index(progressfunc=lambda x: pbar.update(1))
@@ -27,6 +29,6 @@ def main(paths):
 
 if __name__ == "__main__":
 
-	paths = read_json("paths.json")
+	groups = read_json("config.json")["groups"]
 
-	main(paths)
+	main(groups)

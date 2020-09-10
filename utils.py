@@ -4,21 +4,26 @@ import logging, tokenize
 from collections import defaultdict
 from operator import itemgetter
 from importlib import import_module
+from itertools import chain
 from typing import TYPE_CHECKING
 
 from genutility.exceptions import assert_choice
 from genutility.file import read_file
+from genutility.compat.pathlib import Path
+from genutility.compat.os import fspath
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 if TYPE_CHECKING:
 	from typing import Dict, Iterator, List
 
-	from genutility.compat.pathlib import Path
 	from pathspec import Patterns
 
 class InvalidDocument(KeyError):
 	pass
+
+def valid_groups(groups):
+	return {name: set(map(Path, paths)) for name, paths in groups.items()}
 
 def _gitignore_iterdir(path, spec):
 	# type: (Path, Patterns) -> Iterator[Path]
@@ -96,7 +101,7 @@ class InvertedIndex(object):
 					logging.warning("%s already handled by plugins/%s", suffix, modname)
 				except KeyError:
 					tokenizers[suffix] = obj
-		
+
 		return tokenizers
 
 	def clear(self):
@@ -110,23 +115,29 @@ class InvertedIndex(object):
 	def add_document(self, path):
 		# type: (Path, ) -> int
 
-		ret = 0
-
 		try:
 			lexer = self.tokenizers[path.suffix]
 		except KeyError:
-			logging.debug("Ignoring %s", path)
-		else:
-			freqs = lexer.tokenize(path)
-			doc_id = self.docs2ids.setdefault(path, len(self.docs2ids))
-			self.ids2docs[doc_id] = path
-			if self.keep_docs:
-				self.doc_freqs[doc_id] = freqs
-			for token, freq in freqs.items():
-				self.index[token][doc_id] = freq
-			ret = len(freqs)
+			logging.debug("Ignoring %s (invalid suffix)", path)
+			return 0
 
-		return ret
+		try:
+			doc_id = self.docs2ids[path]
+		except KeyError:
+			doc_id = self.docs2ids[path] = len(self.docs2ids)
+		else:
+			if self.ids2docs[doc_id] is not None:
+				logging.debug("Ignoring %s (duplicate path)", path)
+				return 0
+
+		freqs = lexer.tokenize(path)
+		self.ids2docs[doc_id] = path
+		if self.keep_docs:
+			self.doc_freqs[doc_id] = freqs
+		for token, freq in freqs.items():
+			self.index[token][doc_id] = freq
+
+		return len(freqs)
 
 	def remove_document(self, path):
 		# type: (Path, ) -> None
@@ -139,6 +150,7 @@ class InvertedIndex(object):
 
 		try:
 			doc_id = self.docs2ids[path]
+			self.ids2docs[doc_id] = None  # keep doc_id for later reuse, but mark as removed
 		except KeyError:
 			raise InvalidDocument(path)
 
@@ -149,52 +161,74 @@ class InvertedIndex(object):
 			for token, freqs in self.index.items():
 				freqs.pop(doc_id, None)
 
-	def _sorted(self, paths, sortby="path"):
-		assert_choice("sortby", sortby, {"path", "freq"})
+	def get_docs(self, token):
+		# type: (str, ) -> Dict[int, int]
 
-		if sortby == "path":
-			return sorted(paths, key=itemgetter(0), reverse=False)
-		elif sortby == "freq":
-			return sorted(paths, key=itemgetter(1), reverse=True)
+		return self.index.get(token, {})  # get() does not insert key into defaultdict
 
-	def search_token(self, token, sortby="path"):
-		# type: (str, str) -> List[Tuple[Path, int]]
+	def get_paths(self, token):
+		# type: (str, ) -> Iterator[Tuple[Path, int]]
 
-		docs = self.index.get(token, {})  # get() does not insert key into defaultdict
+		docs = self.get_docs(token)
 		paths = ((self.ids2docs[doc_id], freq) for doc_id, freq in docs.items())
 
-		return self._sorted(paths, sortby)
+		return paths
 
-	def search_tokens_op(self, tokens, setop, sortby="path"):
-		# type: (Sequence[str], Callable[[*set], set], str) -> List[Tuple[Path, int]]
+	def get_paths_op(self, tokens, setop):
+		# type: (Sequence[str], Callable[[*Set[int]], Set[int]]) -> Iterator[Tuple[Path, int]]
 
 		freqs = defaultdict(int)
 
 		for token in tokens:
-			for doc_id, freq in self.index.get(token, {}).items():
+			for doc_id, freq in self.get_docs(token).items():
 				freqs[doc_id] += freq
 
 		sets = tuple(set(self.index.get(token, {}).keys()) for token in tokens)
 		docs = setop(*sets)
 		paths = ((self.ids2docs[doc_id], freqs[doc_id]) for doc_id in docs)
 
-		return self._sorted(paths, sortby)
+		return paths
 
-	def search_tokens_and(self, tokens, sortby="path"):
-		# type: (Sequence[str], str) -> List[Tuple[Path, int]]
+class Retriever(object):
 
-		return self.search_tokens_op(tokens, set.intersection, sortby)
+	def __init__(self, invindex):
+		self.invindex = invindex
+		self.groups = {} # type: Dict[str, Set[Path]]
 
-	def search_tokens_or(self, tokens, sortby="path"):
-		# type: (Sequence[str], str) -> List[Tuple[Path, int]]
+	def _sorted(self, groupname, paths, sortby="path"):
+		assert_choice("sortby", sortby, {"path", "freq"})
 
-		return self.search_tokens_op(tokens, set.union, sortby)
+		grouppaths = list(map(str, self.groups[groupname]))
+		paths = ((path, freq) for path, freq in paths if any(fspath(path).startswith(gp) for gp in grouppaths))
+
+		if sortby == "path":
+			return sorted(paths, key=itemgetter(0), reverse=False)
+		elif sortby == "freq":
+			return sorted(paths, key=itemgetter(1), reverse=True)
+
+	def search_token(self, groupname, token, sortby="path"):
+		# type: (str, str) -> List[Tuple[Path, int]]
+
+		paths = self.invindex.get_paths(token)
+		return self._sorted(groupname, paths, sortby)
+
+	def search_tokens_and(self, groupname, tokens, sortby="path"):
+		# type: (str, Sequence[str], str) -> List[Tuple[Path, int]]
+
+		paths = self.invindex.get_paths_op(tokens, set.intersection)
+		return self._sorted(groupname, paths, sortby)
+
+	def search_tokens_or(self, groupname, tokens, sortby="path"):
+		# type: (str, Sequence[str], str) -> List[Tuple[Path, int]]
+
+		paths = self.invindex.get_paths_op(tokens, set.union)
+		return self._sorted(groupname, paths, sortby)
 
 class Indexer(object):
 
 	def __init__(self, invindex):
 		self.invindex = invindex
-		self.paths = [] # type: List[Path]
+		self.groups = {} # type: Dict[str, Set[Path]]
 		self.mtimes = dict() # type: Dict[Path, int]
 
 	def index(self, suffixes=None, partial=True, gitignore=False, progressfunc=None):
@@ -214,7 +248,7 @@ class Indexer(object):
 		docs_added = 0
 		docs_removed = 0
 
-		for path in self.paths:
+		for path in chain.from_iterable(self.groups.values()):
 
 			if gitignore:
 				it = gitignore_iterdir(path)
@@ -227,7 +261,7 @@ class Indexer(object):
 					if filename.suffix not in suffixes:
 						continue
 
-				new_mtime = filename.stat().st_mtime
+				new_mtime = filename.stat().st_mtime_ns
 				if partial:
 					touched.add(filename)
 
