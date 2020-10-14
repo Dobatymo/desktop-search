@@ -1,6 +1,6 @@
 import logging
-
 from collections import Counter
+
 
 class NoLexerFound(Exception):
 	pass

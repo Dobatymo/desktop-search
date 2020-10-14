@@ -1,17 +1,19 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os, subprocess, logging
-from datetime import timedelta
+import logging
+import os
+import subprocess
 from collections import Counter
+from datetime import timedelta
 
 import humanize
-from tqdm import tqdm
-from flask import Flask, render_template, request, flash, redirect, url_for, abort
+from flask import Flask, abort, flash, redirect, render_template, request, url_for
 from genutility.json import read_json
-from genutility.time import MeasureTime
 from genutility.pickle import read_pickle, write_pickle
+from genutility.time import MeasureTime
+from tqdm import tqdm
 
-from utils import InvertedIndex, Indexer, Retriever, valid_groups
+from utils import Indexer, InvertedIndex, Retriever, valid_groups
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -148,8 +150,9 @@ def index():
 
 if __name__ == "__main__":
 
-	from argparse import ArgumentParser
 	import webbrowser
+	from argparse import ArgumentParser
+
 	from genutility.args import is_file
 
 	parser = ArgumentParser()

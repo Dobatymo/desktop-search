@@ -1,11 +1,13 @@
-from pygments.token import Token
+from genutility.file import read_file
 from pygments.lexers import get_lexer_for_filename
+from pygments.token import Token
 from pygments.util import ClassNotFound
+
+from plugin import NoLexerFound, TokenizerPlugin
+
 #from pygments.lexers.rust import RustLexer
 
-from genutility.file import read_file
 
-from plugin import TokenizerPlugin, NoLexerFound
 
 class PygmentsPlugin(TokenizerPlugin):
 

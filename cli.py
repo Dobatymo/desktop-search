@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from tqdm import tqdm
 from genutility.json import read_json
+from tqdm import tqdm
 
-from utils import InvertedIndex, Indexer, Retriever, valid_groups
+from utils import Indexer, InvertedIndex, Retriever, valid_groups
+
 
 def main(groups):
 

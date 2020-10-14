@@ -1,16 +1,17 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import logging, tokenize
+import logging
+import tokenize
 from collections import defaultdict
-from operator import itemgetter
 from importlib import import_module
 from itertools import chain
+from operator import itemgetter
 from typing import TYPE_CHECKING
 
+from genutility.compat.os import fspath
+from genutility.compat.pathlib import Path
 from genutility.exceptions import assert_choice
 from genutility.file import read_file
-from genutility.compat.pathlib import Path
-from genutility.compat.os import fspath
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 

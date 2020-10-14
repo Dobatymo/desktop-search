@@ -1,7 +1,6 @@
 #from slimit.lexer import Lexer
-from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.exceptions import ECMASyntaxError
-
+from calmjs.parse.lexers.es5 import Lexer
 from genutility.file import read_file
 
 from plugin import TokenizerPlugin

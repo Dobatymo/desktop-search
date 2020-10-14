@@ -1,6 +1,7 @@
 import tokenize
 
-from plugin import TokenizerPlugin, NoLexerFound
+from plugin import NoLexerFound, TokenizerPlugin
+
 
 class PythonPlugin(TokenizerPlugin):
 
