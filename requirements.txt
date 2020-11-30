@@ -1,9 +1,9 @@
-flask
-genutility[json]>=0.0.37
-humanize
-pathspec
-tqdm
+flask==1.1.2
+genutility[json]==0.0.64
+humanize==3.1.0
+pathspec==0.8.1
+tqdm==4.54.0
 
 # optional
-calmjs.parse
-pygments
+calmjs.parse==1.2.5
+Pygments==2.7.2

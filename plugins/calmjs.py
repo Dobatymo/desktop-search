@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING, Iterator
+
 #from slimit.lexer import Lexer
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.lexers.es5 import Lexer
@@ -5,6 +7,8 @@ from genutility.file import read_file
 
 from plugin import TokenizerPlugin
 
+if TYPE_CHECKING:
+	from pathlib import Path
 
 class CalmjsPlugin(TokenizerPlugin):
 
@@ -16,7 +20,7 @@ class CalmjsPlugin(TokenizerPlugin):
 	}
 
 	def _tokenize(self, path):
-		# type: (str, ) -> Iterator[str]
+		# type: (Path, ) -> Iterator[str]
 
 		lexer = Lexer()
 		text = read_file(path, "rt", encoding="utf-8")

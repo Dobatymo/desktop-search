@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING, Iterator
+
 from genutility.file import read_file
 from pygments.lexers import get_lexer_for_filename
 from pygments.token import Token
@@ -7,7 +9,8 @@ from plugin import NoLexerFound, TokenizerPlugin
 
 #from pygments.lexers.rust import RustLexer
 
-
+if TYPE_CHECKING:
+	from pathlib import Path
 
 class PygmentsPlugin(TokenizerPlugin):
 
@@ -22,7 +25,7 @@ class PygmentsPlugin(TokenizerPlugin):
 		self.cache = {}
 
 	def _tokenize(self, path):
-		# type: (str, ) -> Iterator[str]
+		# type: (Path, ) -> Iterator[str]
 
 		try:
 			lexer = self.cache[path.suffix]

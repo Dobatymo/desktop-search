@@ -1,7 +1,10 @@
 import tokenize
+from typing import TYPE_CHECKING, Iterator
 
 from plugin import NoLexerFound, TokenizerPlugin
 
+if TYPE_CHECKING:
+	from pathlib import Path
 
 class PythonPlugin(TokenizerPlugin):
 
@@ -14,7 +17,7 @@ class PythonPlugin(TokenizerPlugin):
 	}
 
 	def _tokenize(self, path):
-		# type: (str, ) -> Iterator[str]
+		# type: (Path, ) -> Iterator[str]
 
 		with tokenize.open(path) as fr:
 			for type, string, start, end, line in tokenize.generate_tokens(fr.readline):

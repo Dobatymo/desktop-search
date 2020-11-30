@@ -9,21 +9,25 @@ from operator import itemgetter
 from typing import TYPE_CHECKING
 
 from genutility.compat.os import fspath
-from genutility.compat.pathlib import Path
 from genutility.exceptions import assert_choice
 from genutility.file import read_file
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 if TYPE_CHECKING:
-	from typing import Dict, Iterator, List
+	from pathlib import Path
+	from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple
 
 	from pathspec import Patterns
+
+	from plugin import TokenizerPlugin
 
 class InvalidDocument(KeyError):
 	pass
 
 def valid_groups(groups):
+	# type: (Dict[str, List[str]], ) -> Dict[str, Set[Path]]
+
 	return {name: set(map(Path, paths)) for name, paths in groups.items()}
 
 def _gitignore_iterdir(path, spec):
@@ -70,7 +74,7 @@ class InvertedIndex(object):
 		self.tokenizers = self._get_tokenizers()
 
 	def __init__(self, keep_docs=True):
-		# type: () -> None
+		# type: (bool, ) -> None
 
 		""" Set `keep_docs=False` to improve memory usage,
 			but decrease `remove_document()` performance.
@@ -109,7 +113,7 @@ class InvertedIndex(object):
 		# type: () -> None
 
 		self.docs2ids = {}  # type: Dict[Path, int]
-		self.ids2docs = {}  # type: Dict[int, Path]
+		self.ids2docs = {}  # type: Dict[int, Optional[Path]]
 		self.index = defaultdict(dict)  # type: Dict[str, Dict[int, int]]
 		self.doc_freqs = {}  # type: Dict[int, Dict[str, int]]
 
@@ -176,7 +180,7 @@ class InvertedIndex(object):
 		return paths
 
 	def get_paths_op(self, tokens, setop):
-		# type: (Sequence[str], Callable[[*Set[int]], Set[int]]) -> Iterator[Tuple[Path, int]]
+		# type: (Sequence[str], Callable[..., Set[int]]) -> Iterator[Tuple[Path, int]]
 
 		freqs = defaultdict(int)
 
@@ -208,7 +212,7 @@ class Retriever(object):
 			return sorted(paths, key=itemgetter(1), reverse=True)
 
 	def search_token(self, groupname, token, sortby="path"):
-		# type: (str, str) -> List[Tuple[Path, int]]
+		# type: (str, str, str) -> List[Tuple[Path, int]]
 
 		paths = self.invindex.get_paths(token)
 		return self._sorted(groupname, paths, sortby)
@@ -233,7 +237,7 @@ class Indexer(object):
 		self.mtimes = dict() # type: Dict[Path, int]
 
 	def index(self, suffixes=None, partial=True, gitignore=False, progressfunc=None):
-		# type: (Set[str], bool, bool, Callable[[str], Any]) -> int
+		# type: (Set[str], bool, bool, Callable[[Path], Any]) -> Tuple[int, int]
 
 		""" Searches Indexer.paths for indexable files and indexes them.
 			Returns the number of files added to the index.

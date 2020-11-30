@@ -5,6 +5,7 @@ import os
 import subprocess
 from collections import Counter
 from datetime import timedelta
+from typing import Dict, List
 
 import humanize
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
@@ -20,9 +21,9 @@ app.secret_key = os.urandom(24)
 
 DEFAULT_CONFIG_FILE = "config.json"
 DEFAULT_INDEX_FILE = "index.p"
-DEFAULT_GROUPS = {}
+DEFAULT_GROUPS = {}  # type: Dict[str, List[str]]
 DEFAULT_OPEN = "edit \"{path}\""
-DEFAULT_EXTENSIONS = []
+DEFAULT_EXTENSIONS = []  # type: List[str]
 
 DEFAULT_CONFIG = {
 	"index-file": DEFAULT_INDEX_FILE,

@@ -1,21 +1,28 @@
 import logging
 from collections import Counter
+from typing import TYPE_CHECKING
+from typing import Counter as CounterT
+from typing import Dict, Iterator, Type
 
+if TYPE_CHECKING:
+	from pathlib import Path
 
 class NoLexerFound(Exception):
 	pass
 
 class TokenizerPlugin(object):
 
+	exceptions: Dict[Type[Exception], str]
+
 	def _tokenize(self, path):
-		# type: (str, ) -> Iterator[str]
+		# type: (Path, ) -> Iterator[str]
 
 		raise NotImplementedError
 
 	def tokenize(self, path):
 		# type: (Path, ) -> Counter
 
-		c = Counter()
+		c = Counter()  # type: CounterT[str]
 
 		try:
 			c.update(self._tokenize(path))
