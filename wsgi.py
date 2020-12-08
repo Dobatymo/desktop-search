@@ -5,7 +5,7 @@ import os
 import subprocess
 from collections import Counter
 from datetime import timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import humanize
 from flask import Flask, abort, flash, redirect, render_template, request, url_for
@@ -32,7 +32,7 @@ DEFAULT_CONFIG = {
 	"extensions": DEFAULT_EXTENSIONS,
 }
 
-config_file = None
+config_file = None  # type: Optional[str]
 config = None
 invindex = None
 indexer = None
@@ -41,6 +41,7 @@ retriever = None
 def read_config():
 	# type: () -> dict
 
+	assert config_file
 	try:
 		return read_json(config_file)
 	except FileNotFoundError:

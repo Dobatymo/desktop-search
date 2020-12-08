@@ -4,6 +4,10 @@ repos:
     hooks:
       - id: check-json
       - id: check-yaml
+      - id: check-toml
+      - id: debug-statements
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
   - repo: https://github.com/PyCQA/isort
     rev: 5.6.4
     hooks:

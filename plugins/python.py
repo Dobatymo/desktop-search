@@ -1,7 +1,7 @@
 import tokenize
 from typing import TYPE_CHECKING, Iterator
 
-from plugin import NoLexerFound, TokenizerPlugin
+from plugin import TokenizerPlugin
 
 if TYPE_CHECKING:
 	from pathlib import Path

@@ -1,6 +1,4 @@
 [tool.isort]
-profile = "black"
+indent = "tab"
 src_paths = ["."]
 line_length = 120
-known_thirdpartyfuture = ["builtins", "future", "past"]
-sections = ["FUTURE", "THIRDPARTYFUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]

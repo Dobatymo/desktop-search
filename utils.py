@@ -1,22 +1,32 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import logging
-import tokenize
 from collections import defaultdict
 from importlib import import_module
 from itertools import chain
 from operator import itemgetter
-from typing import TYPE_CHECKING
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    DefaultDict,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+)
 
 from genutility.compat.os import fspath
 from genutility.exceptions import assert_choice
-from genutility.file import read_file
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 if TYPE_CHECKING:
 	from pathlib import Path
-	from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple
 
 	from pathspec import Patterns
 
@@ -172,7 +182,7 @@ class InvertedIndex(object):
 		return self.index.get(token, {})  # get() does not insert key into defaultdict
 
 	def get_paths(self, token):
-		# type: (str, ) -> Iterator[Tuple[Path, int]]
+		# type: (str, ) -> Iterable[Tuple[Optional[Path], int]]
 
 		docs = self.get_docs(token)
 		paths = ((self.ids2docs[doc_id], freq) for doc_id, freq in docs.items())
@@ -180,9 +190,9 @@ class InvertedIndex(object):
 		return paths
 
 	def get_paths_op(self, tokens, setop):
-		# type: (Sequence[str], Callable[..., Set[int]]) -> Iterator[Tuple[Path, int]]
+		# type: (Sequence[str], Callable[..., Set[int]]) -> Iterable[Tuple[Optional[Path], int]]
 
-		freqs = defaultdict(int)
+		freqs = defaultdict(int)  # type: DefaultDict[int, int]
 
 		for token in tokens:
 			for doc_id, freq in self.get_docs(token).items():
