@@ -1,3 +1,5 @@
+from __future__ import generator_stop
+
 import logging
 from collections import Counter
 from typing import TYPE_CHECKING

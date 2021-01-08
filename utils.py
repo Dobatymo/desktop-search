@@ -1,33 +1,20 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import generator_stop
 
 import logging
 from collections import defaultdict
 from importlib import import_module
 from itertools import chain
 from operator import itemgetter
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    DefaultDict,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-)
+from os import fspath
+from pathlib import Path
+from typing import (TYPE_CHECKING, Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Sequence, Set,
+                    Tuple)
 
-from genutility.compat.os import fspath
 from genutility.exceptions import assert_choice
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 if TYPE_CHECKING:
-	from pathlib import Path
-
 	from pathspec import Patterns
 
 	from plugin import TokenizerPlugin
