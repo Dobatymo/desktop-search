@@ -6,4 +6,4 @@ tqdm==4.54.0
 
 # optional
 calmjs.parse==1.2.5
-Pygments==2.7.2
+Pygments==2.7.4
