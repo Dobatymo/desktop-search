@@ -37,7 +37,7 @@
 
 <ul>
 {% for path, freq in paths %}
-<li><a href="{{ url_for('open_file', path=path) }}">{{path}}</a> ({{freq}})</li>
+<li><a href="{{ url_for('open_file', path=path) }}">{{path}}</a> [<a href="{{ url_for('view_file', path=path) }}">view</a>] ({{freq}})</li>
 {% endfor %}
 </ul>
 {% endif %}

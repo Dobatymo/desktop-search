@@ -8,10 +8,11 @@ from datetime import timedelta
 from typing import Dict, List, Optional
 
 import humanize
-from flask import Flask, abort, flash, redirect, render_template, request, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, url_for, make_response
 from genutility.json import read_json
 from genutility.pickle import read_pickle, write_pickle
 from genutility.time import MeasureTime
+from genutility.file import read_file
 from tqdm import tqdm
 
 from utils import Indexer, InvertedIndex, Retriever, valid_groups
@@ -20,7 +21,7 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
 DEFAULT_CONFIG_FILE = "config.json"
-DEFAULT_INDEX_FILE = "index.p"
+DEFAULT_INDEX_FILE = "index.p.gz"
 DEFAULT_GROUPS = {}  # type: Dict[str, List[str]]
 DEFAULT_OPEN = "edit \"{path}\""
 DEFAULT_EXTENSIONS = []  # type: List[str]
@@ -69,11 +70,22 @@ def open_file(path):
 	try:
 		cmd = cmd.format(path=path)
 	except KeyError:
-		flash("Invalid open command: '{}'".format(cmd), "error")
+		flash(f"Invalid open command: '{cmd}'", "error")
 	else:
 		subprocess.run(cmd, shell=True)
 
 	return render_template("back.htm")
+
+@app.route("/view/<path:path>", methods=["GET"])
+def view_file(path):
+	try:
+		text = read_file(path, "rt")
+	except FileNotFoundError:
+		abort(404)
+
+	response = make_response(text, 200)
+	response.mimetype = "text/plain"
+	return response
 
 @app.route("/reindex", methods=["POST"])
 def reindex():
@@ -96,10 +108,14 @@ def reindex():
 	index_file = config.get("index-file", DEFAULT_INDEX_FILE)
 
 	with tqdm() as pbar, MeasureTime() as seconds:
-		docs_added, docs_removed = indexer.index(suffixes, partial, gitignore, progressfunc=lambda x: pbar.update(1))
+		try:
+			docs_added, docs_removed = indexer.index(suffixes, partial, gitignore, progressfunc=lambda x: pbar.update(1))
+		except FileNotFoundError as e:
+			flash(f"FileNotFoundError: {e}. Check the config file.", "error")
+			redirect(url_for("index"))
 
 		delta = humanize.naturaldelta(timedelta(seconds=seconds.get()))
-		flash("Indexed {} new documents and removed {} old ones in {}.".format(docs_added, docs_removed, delta), "info")
+		flash(f"Indexed {docs_added} new documents and removed {docs_removed} old ones in {delta}.", "info")
 
 	write_pickle(indexer, index_file, safe=True)
 
@@ -175,7 +191,7 @@ if __name__ == "__main__":
 	invindex, indexer, retriever = read_index()
 
 	if args.open_browser:
-		webbrowser.open("http://{}:{}/".format(args.host, args.port))
+		webbrowser.open(f"http://{args.host}:{args.port}/")
 
 	app.run(host=args.host, port=args.port)
 
