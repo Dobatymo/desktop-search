@@ -1,10 +1,9 @@
 appdirs==1.4.4
+calmjs.parse==1.2.5  # optional
 flask==2.0.1
 genutility[json]==0.0.74
 humanize==3.11.0
+jsonschema==3.2.0
 pathspec==0.9.0
+Pygments==2.10.0  # optional
 tqdm==4.62.2
-
-# optional
-calmjs.parse==1.2.5
-Pygments==2.10.0

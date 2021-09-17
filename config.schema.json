@@ -1,0 +1,23 @@
+{
+    "type": "object",
+    "properties": {
+        "extensions": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "groups": {
+            "type": "object"
+        },
+        "open": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "extensions",
+        "groups",
+        "open"
+    ],
+    "additionalProperties": false
+}

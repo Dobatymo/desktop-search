@@ -7,8 +7,20 @@ from itertools import chain
 from operator import itemgetter
 from os import fspath
 from pathlib import Path
-from typing import (TYPE_CHECKING, Any, Callable, DefaultDict, Dict, Iterable, Iterator, List, Optional, Sequence, Set,
-                    Tuple)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    DefaultDict,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+)
 
 from genutility.exceptions import assert_choice
 from pathspec import PathSpec
@@ -157,9 +169,7 @@ class InvertedIndex(object):
 
         try:
             doc_id = self.docs2ids[path]
-            self.ids2docs[
-                doc_id
-            ] = None  # keep doc_id for later reuse, but mark as removed
+            self.ids2docs[doc_id] = None  # keep doc_id for later reuse, but mark as removed
         except KeyError:
             raise InvalidDocument(path)
 
@@ -208,11 +218,7 @@ class Retriever(object):
         assert_choice("sortby", sortby, {"path", "freq"})
 
         grouppaths = list(map(str, self.groups[groupname]))
-        paths = (
-            (path, freq)
-            for path, freq in paths
-            if any(fspath(path).startswith(gp) for gp in grouppaths)
-        )
+        paths = ((path, freq) for path, freq in paths if any(fspath(path).startswith(gp) for gp in grouppaths))
 
         if sortby == "path":
             return sorted(paths, key=itemgetter(0), reverse=False)

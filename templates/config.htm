@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+{% include "header.htm" %}
+
+<h2>Current config file</h2>
+
+<div>Config file path: <span style="font-family: monospace;">{{ config_path }}</span></div>
+<hr />
+<pre>{{ config_str }}</pre>
+
+</body>
+</html>

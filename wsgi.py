@@ -1,10 +1,14 @@
 from __future__ import generator_stop
 
+import json
 import logging
 import os
+import platform
 import subprocess
+import sys
 from collections import Counter
 from datetime import timedelta
+from os import fspath
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -12,9 +16,11 @@ import humanize
 from appdirs import user_data_dir
 from flask import Flask, abort, flash, make_response, redirect, render_template, request, url_for
 from genutility.file import read_file
-from genutility.json import read_json
+from genutility.json import read_json, write_json
 from genutility.pickle import read_pickle, write_pickle
 from genutility.time import MeasureTime
+from jsonschema import ValidationError
+from markupsafe import Markup
 from tqdm import tqdm
 
 from utils import Indexer, InvertedIndex, Retriever, valid_groups
@@ -25,12 +31,15 @@ app.secret_key = os.urandom(24)
 APP_NAME = "desktop-search"
 APP_AUTHOR = "Dobatymo"
 
-APPDATA = Path(user_data_dir(APP_NAME, APP_AUTHOR))
+DEFAULT_APPDATA_DIR = Path(user_data_dir(APP_NAME, APP_AUTHOR))
 CONFIG_FILE = "config.json"
 INDEX_FILE = "index.p.gz"
 
 DEFAULT_GROUPS = {}  # type: Dict[str, List[str]]
-DEFAULT_OPEN = 'edit "{path}"'
+if platform.system() == "Windows":
+    DEFAULT_OPEN = 'notepad "{path}"'
+else:
+    DEFAULT_OPEN = 'edit "{path}"'
 DEFAULT_EXTENSIONS = []  # type: List[str]
 
 DEFAULT_CONFIG = {
@@ -50,10 +59,14 @@ def read_config():
     # type: () -> dict
 
     assert appdata_dir
+    config_path = appdata_dir / CONFIG_FILE
     try:
-        return read_json(appdata_dir / CONFIG_FILE)
+        return read_json(config_path, schema="config.schema.json")
     except FileNotFoundError:
         return DEFAULT_CONFIG
+    except (json.JSONDecodeError, ValidationError) as e:
+        logging.critical("Failed to parse config file <%s>: %s", config_path, e)
+        sys.exit(1)
 
 
 def read_index():
@@ -86,11 +99,12 @@ def open_file(path):
     try:
         cmd = cmd.format(path=path)
     except KeyError:
-        flash(f"Invalid open command: '{cmd}'", "error")
+        msg = Markup("Invalid open command: <pre>{}</pre>").format(cmd)
+        flash(msg, "error")
     else:
         subprocess.run(cmd, shell=True)
 
-    return render_template("back.htm")
+    return render_template("back.htm")  # don't redirect but go back in history for better caching
 
 
 @app.route("/view-raw/<path:path>", methods=["GET"])
@@ -118,7 +132,7 @@ def view_file_highlight(path):
 
     lexer = get_lexer_for_filename(path)
     html = highlight(text, lexer, HtmlFormatter())
-    return render_template("view-html.htm", html=html)
+    return render_template("view-html.htm", html=Markup(html))
 
 
 @app.route("/reindex", methods=["POST"])
@@ -132,8 +146,8 @@ def reindex():
     groups = config.get("groups", DEFAULT_GROUPS)
 
     if not groups:
-        flash("No groups to index found", "warning")
-        redirect(url_for("index"))
+        flash("No groups to index found. Please edit config file.", "warning")
+        return redirect(url_for("index"))
 
     _groups = valid_groups(groups)
     indexer.groups = _groups
@@ -147,8 +161,9 @@ def reindex():
                 suffixes, partial, gitignore, progressfunc=lambda x: pbar.update(1)
             )
         except FileNotFoundError as e:
-            flash(f"FileNotFoundError: {e}. Check the config file.", "error")
-            redirect(url_for("index"))
+            msg = Markup("FileNotFoundError: <pre>{e}</pre>. Check the config file.").format(e)
+            flash(msg, "error")
+            return redirect(url_for("index"))
 
         delta = humanize.naturaldelta(timedelta(seconds=seconds.get()))
         flash(
@@ -173,6 +188,48 @@ def statistics():
     return render_template("statistics.htm", stats=stats)
 
 
+@app.route("/open-config", methods=["GET"])
+def open_config():
+    global config
+    assert appdata_dir
+
+    config_path = fspath(appdata_dir / CONFIG_FILE)
+    try:
+        config = read_json(config_path, schema="config.schema.json")
+    except (json.JSONDecodeError, ValidationError) as e:
+        config_str = read_file(config_path, "rt")
+        msg = Markup("Failed to parse config file: <pre>{}</pre>").format(e)
+        flash(msg, "error")
+        return render_template("config.htm", config_str=config_str, config_path=config_path)
+    except FileNotFoundError:
+        config = DEFAULT_CONFIG
+        flash("Default config loaded", "info")
+        write_json(config, config_path, indent="\t")
+    else:
+        flash("Config reloaded", "info")
+
+    config_str = json.dumps(config, indent="\t")
+
+    cmd = config.get("open", DEFAULT_OPEN)
+
+    try:
+        cmd = cmd.format(path=config_path)
+    except KeyError:
+        msg = Markup("Invalid open command: <pre>{}</pre>").format(cmd)
+        flash(msg, "error")
+        return render_template("config.htm", config=config_str)
+
+    try:
+        proc = subprocess.run(cmd, shell=True)
+        proc.check_returncode()
+    except subprocess.CalledProcessError as e:
+        msg = Markup("Failed to open config file: <pre>{}</pre>").format(e)
+        flash(msg, "error")
+        return render_template("config.htm", config_str=config_str, config_path=config_path)
+
+    return redirect(url_for("index"))
+
+
 @app.route("/close-app", methods=["GET"])
 def close():
     shutdown_server()
@@ -183,6 +240,9 @@ def close():
 def index():
 
     groupnames = config.get("groups", DEFAULT_GROUPS).keys()
+
+    if not groupnames:
+        flash("No groups to index found. Please edit config file.", "warning")
 
     token = request.form.get("token", "")
     op = request.form.get("op")
@@ -211,9 +271,7 @@ def index():
         "tokens": len(invindex.index),
     }
 
-    return render_template(
-        "index.htm", token=token, paths=paths, stats=stats, groupnames=groupnames
-    )
+    return render_template("index.htm", token=token, paths=paths, stats=stats, groupnames=groupnames)
 
 
 if __name__ == "__main__":
@@ -226,15 +284,9 @@ if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("--host", default="localhost", help="Server host")
     parser.add_argument("--port", type=int, default=8080, help="Server port")
-    parser.add_argument(
-        "-b", "--open-browser", action="store_true", help="Open browser after start"
-    )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable more print output"
-    )
-    parser.add_argument(
-        "--appdata", type=is_dir, default=APPDATA, help="Path to appdata directory"
-    )
+    parser.add_argument("-b", "--open-browser", action="store_true", help="Open browser after start")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable more print output")
+    parser.add_argument("--appdata-dir", type=is_dir, default=DEFAULT_APPDATA_DIR, help="Path to appdata directory")
     args = parser.parse_args()
 
     if args.verbose:
@@ -242,7 +294,7 @@ if __name__ == "__main__":
     else:
         logging.basicConfig(level=logging.INFO)
 
-    appdata_dir = args.appdata
+    appdata_dir = args.appdata_dir
     config = read_config()
     invindex, indexer, retriever = read_index()
 
@@ -252,6 +304,6 @@ if __name__ == "__main__":
     app.run(host=args.host, port=args.port)
 
 else:
-    appdata_dir = APPDATA
+    appdata_dir = DEFAULT_APPDATA_DIR
     config = read_config()
     invindex, indexer, retriever = read_index()

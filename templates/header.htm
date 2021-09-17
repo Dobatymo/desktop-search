@@ -1,0 +1,11 @@
+<h1>Desktop source code search <span style="font-size: 0.5em;">(<a href="{{ url_for('open_config') }}">config</a>, <a href="{{ url_for('close') }}" onclick="return confirm('Do you really want to close the application?')">close</a>)</span></h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class="flashes">
+    {% for category, message in messages %}
+      <li class="{{ category }}">{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}

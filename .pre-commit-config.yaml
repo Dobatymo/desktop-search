@@ -1,36 +1,44 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v4.0.1
     hooks:
       - id: check-json
       - id: check-yaml
       - id: check-toml
+      - id: check-case-conflict
+      - id: check-added-large-files
       - id: debug-statements
+      - id: requirements-txt-fixer
+      - id: mixed-line-ending
+        args: ["--fix=no"]
       - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]
       - id: end-of-file-fixer
   - repo: https://github.com/psf/black
-    rev: 21.6b0
+    rev: 21.9b0
     hooks:
       - id: black
         language_version: python3 # Should be a command that runs python3.6+
   - repo: https://github.com/PyCQA/isort
-    rev: 5.8.0
+    rev: 5.9.3
     hooks:
       - id: isort
         language_version: python3
   - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.1
+    rev: 3.9.2
     hooks:
       - id: flake8
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 'v0.812'
+    rev: 'v0.910'
     hooks:
     -   id: mypy
+        args: ["--install-types", "--non-interactive"]
         additional_dependencies:
           - appdirs==1.4.4
           - flask==2.0.1
           - genutility[json]==0.0.74
           - humanize==3.11.0
+          - jsonschema==3.2.0
           - pathspec==0.9.0
           - tqdm==4.62.2
           - calmjs.parse==1.2.5

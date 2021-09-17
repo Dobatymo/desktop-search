@@ -1,0 +1,13 @@
+{
+	"groups": {
+		"private": [
+			"D:/my-epositories",
+			"E:/my-epositories",
+		],
+		"library": [
+			"C:/Python38/Lib",
+		]
+	},
+	"open": "\"C:\\Program Files\\Notepad++\\notepad++.exe\" \"{path}\"",
+	"extensions": [".py", ".pyw", ".js", ".rs"]
+}

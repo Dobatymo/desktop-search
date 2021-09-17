@@ -2,17 +2,9 @@
 <html>
 <body>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <ul class="flashes">
-    {% for category, message in messages %}
-      <li class="{{ category }}">{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
+{% include "header.htm" %}
 
-<h1>Stats</h1>
+<h2>Stats</h2>
 
 {{ stats["files"] }} files and {{ stats["tokens"] }} tokens indexed.
 File types:
