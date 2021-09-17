@@ -2,7 +2,7 @@
 <html>
 <body>
 
-<h1>Desktop source code search</h1>
+<h1>Desktop source code search <span style="font-size: 0.5em">(<a href="{{ url_for('close') }}" onclick="return confirm('Do you really want to close the application?')">close</a>)</span></h1>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
@@ -37,7 +37,7 @@
 
 <ul>
 {% for path, freq in paths %}
-<li><a href="{{ url_for('open_file', path=path) }}">{{path}}</a> [<a href="{{ url_for('view_file', path=path) }}">view</a>] ({{freq}})</li>
+<li><a href="{{ url_for('open_file', path=path) }}">{{path}}</a> [<a href="{{ url_for('view_file', path=path) }}">raw</a>, <a href="{{ url_for('view_file_highlight', path=path) }}">html</a>] ({{freq}})</li>
 {% endfor %}
 </ul>
 {% endif %}
