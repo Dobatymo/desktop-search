@@ -4,7 +4,7 @@
 
 {% include "header.htm" %}
 
-<h2>Search for token</h2>
+<h2>Search for token <span style="font-size: 0.5em;">({% if case_sensitive %}Case-sensitive{% else %}Case-insensitive{% endif %})</span></h2>
 
 <form action="{{ url_for('index') }}" method="post">
 <select name="groupname" required="required">
@@ -17,7 +17,11 @@
   <option value="and" selected="selected">and</option>
   <option value="or">or</option>
 </select>
-
+<label for="sortby">sort by:</label>
+<select name="sortby" required="required">
+  <option value="path" selected="selected">Path (asc)</option>
+  <option value="freq">Frequency (desc)</option>
+</select>
 <input type="submit" />
 </form>
 
@@ -36,9 +40,13 @@
 
 <form action="{{ url_for('reindex') }}" method="post">
 <label for="gitignore">Honor .gitignore</label>
-<input type="checkbox" id="gitignore" name="gitignore" value="true" checked="checked">
+<input type="checkbox" id="gitignore" name="gitignore" value="true" checked="checked" />
+<span>&nbsp;</span>
+<label for="case_sensitive">Case-sensitive</label>
+<input type="checkbox" id="case_sensitive" name="case_sensitive" value="true"{% if case_sensitive %} checked="checked"{% endif %} />
+<span>&nbsp;</span>
 <label for="partial">Modified only</label>
-<input type="checkbox" id="partial" name="partial" value="true" checked="checked">
+<input type="checkbox" id="partial" name="partial" value="true" checked="checked" />
 <input type="submit" />
 </form>
 

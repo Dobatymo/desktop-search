@@ -18,6 +18,9 @@ class TokenizerPlugin(object):
 
     exceptions: Dict[Type[Exception], str]
 
+    def __init__(self, case_sensitive: bool = True):
+        self.case_sensitive = case_sensitive
+
     def _tokenize(self, path):
         # type: (Path, ) -> Iterator[str]
 
@@ -29,7 +32,11 @@ class TokenizerPlugin(object):
         c = Counter()  # type: CounterT[str]
 
         try:
-            c.update(self._tokenize(path))
+            if self.case_sensitive:
+                c.update(self._tokenize(path))
+            else:
+                c.update(token.lower() for token in self._tokenize(path))
+
         except Exception as e:
             for exc, tpl in self.exceptions.items():
                 if isinstance(e, exc):

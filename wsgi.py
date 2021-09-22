@@ -23,7 +23,7 @@ from jsonschema import ValidationError
 from markupsafe import Markup
 from tqdm import tqdm
 
-from utils import Indexer, InvertedIndex, Retriever, valid_groups
+from utils import Indexer, IndexerError, InvertedIndex, Retriever, valid_groups
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -142,6 +142,7 @@ def reindex():
 
     partial = bool(request.form.get("partial", False))
     gitignore = bool(request.form.get("gitignore", False))
+    case_sensitive = bool(request.form.get("case_sensitive", False))
     config = read_config()
     groups = config.get("groups", DEFAULT_GROUPS)
 
@@ -158,10 +159,14 @@ def reindex():
     with tqdm() as pbar, MeasureTime() as seconds:
         try:
             docs_added, docs_removed = indexer.index(
-                suffixes, partial, gitignore, progressfunc=lambda x: pbar.update(1)
+                suffixes, partial, gitignore, case_sensitive, progressfunc=lambda x: pbar.update(1)
             )
         except FileNotFoundError as e:
-            msg = Markup("FileNotFoundError: <pre>{e}</pre>. Check the config file.").format(e)
+            msg = Markup("FileNotFoundError: <pre>{}</pre>. Check the config file.").format(e)
+            flash(msg, "error")
+            return redirect(url_for("index"))
+        except IndexerError as e:
+            msg = Markup("{}.").format(e)
             flash(msg, "error")
             return redirect(url_for("index"))
 
@@ -244,23 +249,27 @@ def index():
     if not groupnames:
         flash("No groups to index found. Please edit config file.", "warning")
 
+    groupname = request.form.get("groupname")
     token = request.form.get("token", "")
     op = request.form.get("op")
-    groupname = request.form.get("groupname")
+    sortby = request.form.get("sortby")
 
     if token:
 
         if groupname not in groupnames:
             abort(400)
 
+        if sortby not in ("path", "freq"):
+            abort(400)
+
         tokens = token.split(" ")
         if len(tokens) == 1:
-            paths = retriever.search_token(groupname, token)
+            paths = retriever.search_token(groupname, token, sortby)
         else:
             if op == "and":
-                paths = retriever.search_tokens_and(groupname, tokens)
+                paths = retriever.search_tokens_and(groupname, tokens, sortby)
             elif op == "or":
-                paths = retriever.search_tokens_or(groupname, tokens)
+                paths = retriever.search_tokens_or(groupname, tokens, sortby)
             else:
                 abort(400)
     else:
@@ -271,7 +280,14 @@ def index():
         "tokens": len(invindex.index),
     }
 
-    return render_template("index.htm", token=token, paths=paths, stats=stats, groupnames=groupnames)
+    return render_template(
+        "index.htm",
+        token=token,
+        paths=paths,
+        stats=stats,
+        groupnames=groupnames,
+        case_sensitive=invindex.case_sensitive,
+    )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING, Any, Dict, Iterator
 
 from genutility.file import read_file
 from pygments.lexers import get_lexer_for_filename
@@ -21,9 +21,9 @@ class PygmentsPlugin(TokenizerPlugin):
         UnicodeDecodeError: "Skipping {path}: file is not valid utf-8",
     }
 
-    def __init__(self):
-        TokenizerPlugin.__init__(self)
-        self.cache = {}
+    def __init__(self, case_sensitive: bool = True):
+        TokenizerPlugin.__init__(self, case_sensitive)
+        self.cache: Dict[str, Any] = {}
 
     def _tokenize(self, path):
         # type: (Path, ) -> Iterator[str]

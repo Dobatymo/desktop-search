@@ -1,4 +1,4 @@
-from __future__ import generator_stop
+from __future__ import annotations, generator_stop
 
 import logging
 from collections import defaultdict
@@ -15,6 +15,7 @@ from typing import (
     Dict,
     Iterable,
     Iterator,
+    KeysView,
     List,
     Optional,
     Sequence,
@@ -33,6 +34,10 @@ if TYPE_CHECKING:
 
 
 class InvalidDocument(KeyError):
+    pass
+
+
+class IndexerError(Exception):
     pass
 
 
@@ -78,6 +83,12 @@ class InvertedIndex(object):
         "pygments": "PygmentsPlugin",
     }
 
+    case_sensitive: bool
+    docs2ids: Dict[Path, int]
+    ids2docs: Dict[int, Optional[Path]]
+    index: Dict[str, Dict[int, int]]
+    doc_freqs: Dict[int, Dict[str, int]]
+
     def __getstate__(self):
         state = self.__dict__.copy()
         del state["tokenizers"]
@@ -85,35 +96,30 @@ class InvertedIndex(object):
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.tokenizers = self._get_tokenizers()
+        self.tokenizers = self._get_tokenizers(state["case_sensitive"])
 
-    def __init__(self, keep_docs=True):
-        # type: (bool, ) -> None
+    def __init__(self, keep_docs: bool = True, case_sensitive: bool = True) -> None:
 
         """Set `keep_docs=False` to improve memory usage,
         but decrease `remove_document()` performance.
         """
 
         self.keep_docs = keep_docs
-        self.tokenizers = self._get_tokenizers()
+        self.clear(case_sensitive)
 
-        logging.info("Found lexers for: [%s]", ", ".join(self.tokenizers.keys()))
-
-        self.clear()
-
-    def _get_tokenizers(self):
-        # type: () -> Dict[str, TokenizerPlugin]
+    @classmethod
+    def _get_tokenizers(cls, case_sensitive: bool) -> Dict[str, TokenizerPlugin]:
 
         tokenizers = {}  # type: Dict[str, TokenizerPlugin]
 
-        for modname, clsname in self.lexers.items():
+        for modname, clsname in cls.lexers.items():
             try:
                 module = import_module("plugins.{}".format(modname))
             except ImportError as e:
                 logging.warning("Could not import %s: %s", modname, e)
                 continue
 
-            obj = getattr(module, clsname)()
+            obj = getattr(module, clsname)(case_sensitive)
             for suffix in obj.suffixes:
                 try:
                     obj = tokenizers[suffix]
@@ -123,13 +129,16 @@ class InvertedIndex(object):
 
         return tokenizers
 
-    def clear(self):
-        # type: () -> None
+    def clear(self, case_sensitive: bool = True) -> None:
 
-        self.docs2ids = {}  # type: Dict[Path, int]
-        self.ids2docs = {}  # type: Dict[int, Optional[Path]]
-        self.index = defaultdict(dict)  # type: Dict[str, Dict[int, int]]
-        self.doc_freqs = {}  # type: Dict[int, Dict[str, int]]
+        self.tokenizers = self._get_tokenizers(case_sensitive)
+        logging.info("Found lexers for: [%s]", ", ".join(self.tokenizers.keys()))
+
+        self.docs2ids = {}
+        self.ids2docs = {}
+        self.index = defaultdict(dict)
+        self.doc_freqs = {}
+        self.case_sensitive = case_sensitive
 
     def add_document(self, path):
         # type: (Path, ) -> int
@@ -180,10 +189,19 @@ class InvertedIndex(object):
             for token, freqs in self.index.items():
                 freqs.pop(doc_id, None)
 
-    def get_docs(self, token):
-        # type: (str, ) -> Dict[int, int]
+    def get_docs(self, token: str) -> Dict[int, int]:
+
+        if not self.case_sensitive:
+            token = token.lower()
 
         return self.index.get(token, {})  # get() does not insert key into defaultdict
+
+    def get_docs_keys(self, token: str) -> KeysView[int]:
+
+        if not self.case_sensitive:
+            token = token.lower()
+
+        return self.index.get(token, {}).keys()  # get() does not insert key into defaultdict
 
     def get_paths(self, token):
         # type: (str, ) -> Iterable[Tuple[Optional[Path], int]]
@@ -202,7 +220,7 @@ class InvertedIndex(object):
             for doc_id, freq in self.get_docs(token).items():
                 freqs[doc_id] += freq
 
-        sets = tuple(set(self.index.get(token, {}).keys()) for token in tokens)
+        sets = tuple(set(self.get_docs_keys(token)) for token in tokens)
         docs = setop(*sets)
         paths = ((self.ids2docs[doc_id], freqs[doc_id]) for doc_id in docs)
 
@@ -250,18 +268,26 @@ class Indexer(object):
         self.groups = {}  # type: Dict[str, Set[Path]]
         self.mtimes = dict()  # type: Dict[Path, int]
 
-    def index(self, suffixes=None, partial=True, gitignore=False, progressfunc=None):
-        # type: (Set[str], bool, bool, Callable[[Path], Any]) -> Tuple[int, int]
+    def index(
+        self,
+        suffixes: Set[str] = None,
+        partial: bool = True,
+        gitignore: bool = False,
+        case_sensitive: bool = True,
+        progressfunc: Callable[[Path], Any] = None,
+    ) -> Tuple[int, int]:
 
         """Searches Indexer.paths for indexable files and indexes them.
         Returns the number of files added to the index.
         """
 
         if not partial:
-            self.invindex.clear()
+            self.invindex.clear(case_sensitive)
             self.mtimes = dict()
             add = True
         else:
+            if self.invindex.case_sensitive != case_sensitive:
+                raise IndexerError("Changing case-sensitivity requires a full index rebuild")
             touched = set()  # type: Set[Path]
 
         docs_added = 0

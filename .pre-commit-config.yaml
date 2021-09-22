@@ -32,7 +32,7 @@ repos:
     rev: 'v0.910'
     hooks:
     -   id: mypy
-        args: ["--install-types", "--non-interactive"]
+        args: ["--ignore-missing-imports", "--install-types", "--non-interactive"]
         additional_dependencies:
           - appdirs==1.4.4
           - flask==2.0.1
