@@ -4,7 +4,7 @@
 
 {% include "header.htm" %}
 
-<h2>Search for token <span style="font-size: 0.5em;">({% if case_sensitive %}Case-sensitive{% else %}Case-insensitive{% endif %})</span></h2>
+<h2>Search for text <span style="font-size: 0.5em;">({% if case_sensitive %}Case-sensitive{% else %}Case-insensitive{% endif %})</span></h2>
 
 <form action="{{ url_for('index') }}" method="post">
 <select name="groupname" required="required">
@@ -12,7 +12,11 @@
       <option value="{{ name }}">{{ name }}</option>
     {% endfor %}
 </select>
-<input type="text" name="token" />
+<select name="field" required="required">
+  <option value="code" selected="selected">Code</option>
+  <option value="text">Strings and comments</option>
+</select>
+<input type="text" name="text" />
 <select name="op" required="required">
   <option value="and" selected="selected">and</option>
   <option value="or">or</option>
@@ -25,9 +29,9 @@
 <input type="submit" />
 </form>
 
-{% if token %}
+{% if text %}
 
-{{ paths|length }} results found for <strong>{{ token }}</strong>.
+{{ paths|length }} results found for <strong>{{ text }}</strong>.
 
 <ul>
 {% for path, freq in paths %}
@@ -42,8 +46,11 @@
 <label for="gitignore">Honor .gitignore</label>
 <input type="checkbox" id="gitignore" name="gitignore" value="true" checked="checked" />
 <span>&nbsp;</span>
-<label for="case_sensitive">Case-sensitive</label>
-<input type="checkbox" id="case_sensitive" name="case_sensitive" value="true"{% if case_sensitive %} checked="checked"{% endif %} />
+<label for="case_sensitive_code">Case-sensitive (code)</label>
+<input type="checkbox" id="case_sensitive_code" name="case_sensitive_code" value="true"{% if config["code"]["case-sensitive"] %} checked="checked"{% endif %} />
+<span>&nbsp;</span>
+<label for="case_sensitive_text">Case-sensitive (text)</label>
+<input type="checkbox" id="case_sensitive_text" name="case_sensitive_text" value="true"{% if config["text"]["case-sensitive"] %} checked="checked"{% endif %} />
 <span>&nbsp;</span>
 <label for="partial">Modified only</label>
 <input type="checkbox" id="partial" name="partial" value="true" checked="checked" />

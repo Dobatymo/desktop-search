@@ -31,15 +31,17 @@ repos:
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: 'v0.910'
     hooks:
-    -   id: mypy
+      - id: mypy
         args: ["--ignore-missing-imports", "--install-types", "--non-interactive"]
         additional_dependencies:
           - appdirs==1.4.4
+          - calmjs.parse==1.2.5  # optional
           - flask==2.0.1
           - genutility[json]==0.0.74
           - humanize==3.11.0
           - jsonschema==3.2.0
+          - MarkupSafe==2.0.1
           - pathspec==0.9.0
+          - Pygments==2.10.0  # optional
+          - spacy==3.1.3
           - tqdm==4.62.2
-          - calmjs.parse==1.2.5
-          - Pygments==2.10.0

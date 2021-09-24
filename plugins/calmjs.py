@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, Iterator
+from __future__ import annotations, generator_stop
+
+from typing import TYPE_CHECKING, Iterator, Tuple
 
 # from slimit.lexer import Lexer
 from calmjs.parse.exceptions import ECMASyntaxError
@@ -20,13 +22,17 @@ class CalmjsPlugin(TokenizerPlugin):
         ECMASyntaxError: "Skipping {path}: file is not valid ES5",
     }
 
-    def _tokenize(self, path):
-        # type: (Path, ) -> Iterator[str]
+    def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
 
-        lexer = Lexer()
+        lexer = Lexer(yield_comments=True)
         text = read_file(path, "rt", encoding="utf-8")
         lexer.input(text)
 
+        code_tokens = ("ID", "NUMBER")
+        text_tokens = ("STRING", "LINE_COMMENT", "BLOCK_COMMENT")
+
         for token in lexer:
-            if token.type == "ID":
-                yield token.value
+            if token.type in code_tokens:
+                yield "code", token.value
+            elif token.type in text_tokens:
+                yield "text", token.value

@@ -15,7 +15,6 @@ from typing import (
     Dict,
     Iterable,
     Iterator,
-    KeysView,
     List,
     Optional,
     Sequence,
@@ -26,6 +25,8 @@ from typing import (
 from genutility.exceptions import assert_choice
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
+
+from nlp import DEFAULT_CONFIG, Preprocess
 
 if TYPE_CHECKING:
     from pathspec import Patterns
@@ -83,32 +84,39 @@ class InvertedIndex(object):
         "pygments": "PygmentsPlugin",
     }
 
-    case_sensitive: bool
+    config: Dict[str, Any]
     docs2ids: Dict[Path, int]
     ids2docs: Dict[int, Optional[Path]]
-    index: Dict[str, Dict[int, int]]
-    doc_freqs: Dict[int, Dict[str, int]]
+    table: Dict[str, Dict[str, Dict[int, int]]]
+    doc_freqs: Dict[str, Dict[int, Dict[str, int]]]
 
     def __getstate__(self):
         state = self.__dict__.copy()
+        del state["preprocess"]
         del state["tokenizers"]
         return state
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.tokenizers = self._get_tokenizers(state["case_sensitive"])
 
-    def __init__(self, keep_docs: bool = True, case_sensitive: bool = True) -> None:
+    def init(self, preprocess: Preprocess):
+        self.preprocess = preprocess
+        self.tokenizers = self._get_tokenizers(preprocess, self.config)
+
+    def __init__(self, preprocess: Preprocess, keep_docs: bool = True, config: Optional[Dict[str, Any]] = None) -> None:
 
         """Set `keep_docs=False` to improve memory usage,
         but decrease `remove_document()` performance.
         """
 
+        self.preprocess = preprocess
         self.keep_docs = keep_docs
-        self.clear(case_sensitive)
+        self.clear(config)
 
     @classmethod
-    def _get_tokenizers(cls, case_sensitive: bool) -> Dict[str, TokenizerPlugin]:
+    def _get_tokenizers(
+        cls, preprocess: Preprocess, config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, TokenizerPlugin]:
 
         tokenizers = {}  # type: Dict[str, TokenizerPlugin]
 
@@ -119,7 +127,7 @@ class InvertedIndex(object):
                 logging.warning("Could not import %s: %s", modname, e)
                 continue
 
-            obj = getattr(module, clsname)(case_sensitive)
+            obj = getattr(module, clsname)(preprocess, config)
             for suffix in obj.suffixes:
                 try:
                     obj = tokenizers[suffix]
@@ -129,25 +137,31 @@ class InvertedIndex(object):
 
         return tokenizers
 
-    def clear(self, case_sensitive: bool = True) -> None:
+    def clear(self, config: Optional[Dict[str, Any]] = None) -> None:
 
-        self.tokenizers = self._get_tokenizers(case_sensitive)
+        self.tokenizers = self._get_tokenizers(self.preprocess, config)
         logging.info("Found lexers for: [%s]", ", ".join(self.tokenizers.keys()))
 
         self.docs2ids = {}
         self.ids2docs = {}
-        self.index = defaultdict(dict)
-        self.doc_freqs = {}
-        self.case_sensitive = case_sensitive
+        self.table = {
+            "code": defaultdict(dict),
+            "text": defaultdict(dict),
+        }
+        self.doc_freqs = {
+            "code": {},
+            "text": {},
+        }
+        self.config = config or DEFAULT_CONFIG
 
     def add_document(self, path):
-        # type: (Path, ) -> int
+        # type: (Path, ) -> bool
 
         try:
             lexer = self.tokenizers[path.suffix]
         except KeyError:
             logging.debug("Ignoring %s (invalid suffix)", path)
-            return 0
+            return False
 
         try:
             doc_id = self.docs2ids[path]
@@ -156,16 +170,21 @@ class InvertedIndex(object):
         else:
             if self.ids2docs[doc_id] is not None:
                 logging.debug("Ignoring %s (duplicate path)", path)
-                return 0
+                return False
 
-        freqs = lexer.tokenize(path)
+        freqs_dict = lexer.tokenize(path)
         self.ids2docs[doc_id] = path
-        if self.keep_docs:
-            self.doc_freqs[doc_id] = freqs
-        for token, freq in freqs.items():
-            self.index[token][doc_id] = freq
 
-        return len(freqs)
+        if self.keep_docs:
+            for name, freqs in freqs_dict.items():
+                self.doc_freqs[name][doc_id] = freqs
+
+        for name, freqs in freqs_dict.items():
+            index = self.table[name]
+            for token, freq in freqs.items():
+                index[token][doc_id] = freq
+
+        return True
 
     def remove_document(self, path):
         # type: (Path, ) -> None
@@ -183,44 +202,40 @@ class InvertedIndex(object):
             raise InvalidDocument(path)
 
         if self.keep_docs:
-            for token, freq in self.doc_freqs[doc_id].items():
-                del self.index[token][doc_id]
+            for name, field_freqs in self.doc_freqs.items():
+                index = self.table[name]
+                for token, freq in field_freqs[doc_id].items():
+                    del index[token][doc_id]
         else:
-            for token, freqs in self.index.items():
-                freqs.pop(doc_id, None)
+            for name, index in self.table.items():
+                for token, freqs in index.items():
+                    freqs.pop(doc_id, None)
 
-    def get_docs(self, token: str) -> Dict[int, int]:
+    def get_docs(self, field: str, token: str) -> Dict[int, int]:
 
-        if not self.case_sensitive:
+        if not self.config[field]["case-sensitive"]:
             token = token.lower()
 
-        return self.index.get(token, {})  # get() does not insert key into defaultdict
+        return self.table[field].get(token, {})  # get() does not insert key into defaultdict
 
-    def get_docs_keys(self, token: str) -> KeysView[int]:
+    def get_paths(self, field: str, token: str) -> Iterable[Tuple[Optional[Path], int]]:
 
-        if not self.case_sensitive:
-            token = token.lower()
-
-        return self.index.get(token, {}).keys()  # get() does not insert key into defaultdict
-
-    def get_paths(self, token):
-        # type: (str, ) -> Iterable[Tuple[Optional[Path], int]]
-
-        docs = self.get_docs(token)
+        docs = self.get_docs(field, token)
         paths = ((self.ids2docs[doc_id], freq) for doc_id, freq in docs.items())
 
         return paths
 
-    def get_paths_op(self, tokens, setop):
-        # type: (Sequence[str], Callable[..., Set[int]]) -> Iterable[Tuple[Optional[Path], int]]
+    def get_paths_op(
+        self, field: str, tokens: Sequence[str], setop: Callable[..., Set[int]]
+    ) -> Iterable[Tuple[Optional[Path], int]]:
 
         freqs = defaultdict(int)  # type: DefaultDict[int, int]
 
         for token in tokens:
-            for doc_id, freq in self.get_docs(token).items():
+            for doc_id, freq in self.get_docs(field, token).items():
                 freqs[doc_id] += freq
 
-        sets = tuple(set(self.get_docs_keys(token)) for token in tokens)
+        sets = tuple(set(self.get_docs(field, token).keys()) for token in tokens)
         docs = setop(*sets)
         paths = ((self.ids2docs[doc_id], freqs[doc_id]) for doc_id in docs)
 
@@ -228,9 +243,9 @@ class InvertedIndex(object):
 
 
 class Retriever(object):
-    def __init__(self, invindex):
+    def __init__(self, invindex: InvertedIndex) -> None:
         self.invindex = invindex
-        self.groups = {}  # type: Dict[str, Set[Path]]
+        self.groups: Dict[str, Set[Path]] = {}
 
     def _sorted(self, groupname, paths, sortby="path"):
         assert_choice("sortby", sortby, {"path", "freq"})
@@ -243,23 +258,40 @@ class Retriever(object):
         elif sortby == "freq":
             return sorted(paths, key=itemgetter(1), reverse=True)
 
-    def search_token(self, groupname, token, sortby="path"):
-        # type: (str, str, str) -> List[Tuple[Path, int]]
+    def search_token(self, groupname: str, field: str, token: str, sortby: str = "path") -> List[Tuple[Path, int]]:
 
-        paths = self.invindex.get_paths(token)
+        paths = self.invindex.get_paths(field, token)
         return self._sorted(groupname, paths, sortby)
 
-    def search_tokens_and(self, groupname, tokens, sortby="path"):
-        # type: (str, Sequence[str], str) -> List[Tuple[Path, int]]
+    def search_tokens_and(
+        self, groupname: str, field: str, tokens: Sequence[str], sortby: str = "path"
+    ) -> List[Tuple[Path, int]]:
 
-        paths = self.invindex.get_paths_op(tokens, set.intersection)
+        paths = self.invindex.get_paths_op(field, tokens, set.intersection)
         return self._sorted(groupname, paths, sortby)
 
-    def search_tokens_or(self, groupname, tokens, sortby="path"):
-        # type: (str, Sequence[str], str) -> List[Tuple[Path, int]]
+    def search_tokens_or(
+        self, groupname: str, field: str, tokens: Sequence[str], sortby: str = "path"
+    ) -> List[Tuple[Path, int]]:
 
-        paths = self.invindex.get_paths_op(tokens, set.union)
+        paths = self.invindex.get_paths_op(field, tokens, set.union)
         return self._sorted(groupname, paths, sortby)
+
+    def search_text(self, groupname, field, text, op, sortby):
+
+        if op not in ("and", "or"):
+            raise ValueError("`op` must be 'and' or 'or'")
+
+        tokens = self.invindex.preprocess.text(self.invindex.config[field], text)
+        if len(tokens) == 1:
+            paths = self.search_token(groupname, field, tokens[0], sortby)
+        else:
+            if op == "and":
+                paths = self.search_tokens_and(groupname, field, tokens, sortby)
+            elif op == "or":
+                paths = self.search_tokens_or(groupname, field, tokens, sortby)
+
+        return paths
 
 
 class Indexer(object):
@@ -273,7 +305,7 @@ class Indexer(object):
         suffixes: Set[str] = None,
         partial: bool = True,
         gitignore: bool = False,
-        case_sensitive: bool = True,
+        config: Optional[Dict[str, Any]] = None,
         progressfunc: Callable[[Path], Any] = None,
     ) -> Tuple[int, int]:
 
@@ -282,11 +314,11 @@ class Indexer(object):
         """
 
         if not partial:
-            self.invindex.clear(case_sensitive)
+            self.invindex.clear(config)
             self.mtimes = dict()
             add = True
         else:
-            if self.invindex.case_sensitive != case_sensitive:
+            if self.invindex.config != config:
                 raise IndexerError("Changing case-sensitivity requires a full index rebuild")
             touched = set()  # type: Set[Path]
 

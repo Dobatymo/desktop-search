@@ -1,4 +1,4 @@
-from __future__ import generator_stop
+from __future__ import annotations, generator_stop
 
 import json
 import logging
@@ -23,6 +23,8 @@ from jsonschema import ValidationError
 from markupsafe import Markup
 from tqdm import tqdm
 
+from nlp import DEFAULT_CONFIG as DEFAULT_NLP_CONFIG
+from nlp import Preprocess
 from utils import Indexer, IndexerError, InvertedIndex, Retriever, valid_groups
 
 app = Flask(__name__)
@@ -72,13 +74,15 @@ def read_config():
 def read_index():
 
     assert appdata_dir
+    preprocess = Preprocess()
+
     try:
         indexer = read_pickle(appdata_dir / INDEX_FILE)
         invindex = indexer.invindex
+        invindex.init(preprocess)
     except FileNotFoundError:
-        invindex = InvertedIndex()
+        invindex = InvertedIndex(preprocess)
         indexer = Indexer(invindex)
-        retriever = Retriever(invindex)
 
     retriever = Retriever(invindex)
     retriever.groups = indexer.groups
@@ -140,9 +144,13 @@ def reindex():
     global config
     assert appdata_dir
 
+    nlp_config = DEFAULT_NLP_CONFIG
+
     partial = bool(request.form.get("partial", False))
     gitignore = bool(request.form.get("gitignore", False))
-    case_sensitive = bool(request.form.get("case_sensitive", False))
+    nlp_config["code"]["case-sensitive"] = bool(request.form.get("case_sensitive_code", True))
+    nlp_config["text"]["case-sensitive"] = bool(request.form.get("case_sensitive_text", False))
+
     config = read_config()
     groups = config.get("groups", DEFAULT_GROUPS)
 
@@ -159,7 +167,7 @@ def reindex():
     with tqdm() as pbar, MeasureTime() as seconds:
         try:
             docs_added, docs_removed = indexer.index(
-                suffixes, partial, gitignore, case_sensitive, progressfunc=lambda x: pbar.update(1)
+                suffixes, partial, gitignore, nlp_config, progressfunc=lambda x: pbar.update(1)
             )
         except FileNotFoundError as e:
             msg = Markup("FileNotFoundError: <pre>{}</pre>. Check the config file.").format(e)
@@ -186,7 +194,7 @@ def statistics():
 
     stats = {
         "files": len(invindex.ids2docs),
-        "tokens": len(invindex.index),
+        "tokens": {k: len(v) for k, v in invindex.table.items()},
         "suffixes": Counter(path.suffix for path in invindex.docs2ids),
     }
 
@@ -250,43 +258,38 @@ def index():
         flash("No groups to index found. Please edit config file.", "warning")
 
     groupname = request.form.get("groupname")
-    token = request.form.get("token", "")
+    field = request.form.get("field")
+    text = request.form.get("text", "")
     op = request.form.get("op")
     sortby = request.form.get("sortby")
 
-    if token:
+    if text:
 
         if groupname not in groupnames:
             abort(400)
-
+        if field not in ("code", "text"):
+            abort(400)
+        if op not in ("and", "or"):
+            abort(400)
         if sortby not in ("path", "freq"):
             abort(400)
 
-        tokens = token.split(" ")
-        if len(tokens) == 1:
-            paths = retriever.search_token(groupname, token, sortby)
-        else:
-            if op == "and":
-                paths = retriever.search_tokens_and(groupname, tokens, sortby)
-            elif op == "or":
-                paths = retriever.search_tokens_or(groupname, tokens, sortby)
-            else:
-                abort(400)
+        paths = retriever.search_text(groupname, field, text, op, sortby)
     else:
         paths = []
 
     stats = {
         "files": len(invindex.ids2docs),
-        "tokens": len(invindex.index),
+        "tokens": sum(map(len, invindex.table.values())),
     }
 
     return render_template(
         "index.htm",
-        token=token,
+        text=text,
         paths=paths,
         stats=stats,
         groupnames=groupnames,
-        case_sensitive=invindex.case_sensitive,
+        config=invindex.config,
     )
 
 
