@@ -1,5 +1,6 @@
 appdirs==1.4.4
 calmjs.parse==1.2.5  # optional
+cheroot==8.5.2
 flask==2.0.1
 genutility[json]==0.0.74
 humanize==3.11.0

@@ -90,10 +90,19 @@ def read_index():
 
 
 def shutdown_server():
+
+    # cheroot
+    if "close" in app.config:
+        app.config["close"]()
+        return
+
+    # werkzeug
     func = request.environ.get("werkzeug.server.shutdown")
-    if func is None:
-        raise RuntimeError("Not running with the Werkzeug Server")
-    func()
+    if func:
+        func()
+        return
+
+    raise RuntimeError("Closing app through web ui not supported")
 
 
 @app.route("/open/<path:path>", methods=["GET"])
@@ -166,7 +175,7 @@ def reindex():
 
     with tqdm() as pbar, MeasureTime() as seconds:
         try:
-            docs_added, docs_removed = indexer.index(
+            docs_added, docs_removed = indexer.index(  # fixme: add a lock here so it cannot be run multiple times
                 suffixes, partial, gitignore, nlp_config, progressfunc=lambda x: pbar.update(1)
             )
         except FileNotFoundError as e:
