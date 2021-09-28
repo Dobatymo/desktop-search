@@ -4,6 +4,7 @@ import logging
 from collections import defaultdict
 from importlib import import_module
 from itertools import chain
+from math import log10
 from operator import itemgetter
 from os import fspath
 from pathlib import Path
@@ -20,6 +21,7 @@ from typing import (
     Sequence,
     Set,
     Tuple,
+    cast,
 )
 
 from genutility.exceptions import assert_choice
@@ -32,6 +34,9 @@ if TYPE_CHECKING:
     from pathspec import Patterns
 
     from plugin import TokenizerPlugin
+
+OptionalSearchResult = Tuple[Optional[Path], int, float]
+SearchResult = Tuple[Path, int, float]
 
 
 class InvalidDocument(KeyError):
@@ -80,6 +85,7 @@ class InvertedIndex(object):
 
     lexers = {
         "calmjs": "CalmjsPlugin",
+        "plaintext": "PlaintextPlugin",
         "python": "PythonPlugin",
         "pygments": "PygmentsPlugin",
     }
@@ -218,28 +224,56 @@ class InvertedIndex(object):
 
         return self.table[field].get(token, {})  # get() does not insert key into defaultdict
 
-    def get_paths(self, field: str, token: str) -> Iterable[Tuple[Optional[Path], int]]:
+    @staticmethod
+    def _tfidf(tf: int, idf: float) -> float:
+        return tf * idf
+
+    def get_paths(self, field: str, token: str) -> Iterable[OptionalSearchResult]:
 
         docs = self.get_docs(field, token)
-        paths = ((self.ids2docs[doc_id], freq) for doc_id, freq in docs.items())
+        num_docs = len(self.table[field])
+
+        if docs:
+            inv_doc_freq = log10(num_docs / len(docs))
+        paths = (
+            (self.ids2docs[doc_id], term_freq, self._tfidf(term_freq, inv_doc_freq))
+            for doc_id, term_freq in docs.items()
+        )
 
         return paths
 
     def get_paths_op(
         self, field: str, tokens: Sequence[str], setop: Callable[..., Set[int]]
-    ) -> Iterable[Tuple[Optional[Path], int]]:
+    ) -> Iterable[OptionalSearchResult]:
 
-        freqs = defaultdict(int)  # type: DefaultDict[int, int]
+        term_freqs = defaultdict(int)  # type: DefaultDict[int, int]
+        tfidf = defaultdict(float)  # type: DefaultDict[int, float]
+        num_docs = len(self.table[field])
 
         for token in tokens:
-            for doc_id, freq in self.get_docs(field, token).items():
-                freqs[doc_id] += freq
+            docs = self.get_docs(field, token)
+            if docs:
+                inv_doc_freq = log10(num_docs / len(docs))
+            for doc_id, term_freq in docs.items():
+                term_freqs[doc_id] += term_freq
+                tfidf[doc_id] += self._tfidf(term_freq, inv_doc_freq)
 
         sets = tuple(set(self.get_docs(field, token).keys()) for token in tokens)
-        docs = setop(*sets)
-        paths = ((self.ids2docs[doc_id], freqs[doc_id]) for doc_id in docs)
+        docs_op = setop(*sets)
+        paths = ((self.ids2docs[doc_id], term_freqs[doc_id], tfidf[doc_id]) for doc_id in docs_op)
 
         return paths
+
+    def _memory_usage(self) -> Dict[str, int]:
+        from pympler import asizeof
+
+        return {
+            "total": asizeof.asizeof(self),
+            "docs2ids": asizeof.asizeof(self.docs2ids),
+            "ids2docs": asizeof.asizeof(self.ids2docs),
+            "table": asizeof.asizeof(self.table),
+            "doc_freqs": asizeof.asizeof(self.doc_freqs),
+        }
 
 
 class Retriever(object):
@@ -247,32 +281,46 @@ class Retriever(object):
         self.invindex = invindex
         self.groups: Dict[str, Set[Path]] = {}
 
-    def _sorted(self, groupname, paths, sortby="path"):
-        assert_choice("sortby", sortby, {"path", "freq"})
+    def _sorted(self, groupname: str, paths: Iterable[OptionalSearchResult], sortby="path") -> List[SearchResult]:
+        assert_choice("sortby", sortby, {"path", "term_freq", "tfidf"})
 
         grouppaths = list(map(str, self.groups[groupname]))
-        paths = ((path, freq) for path, freq in paths if any(fspath(path).startswith(gp) for gp in grouppaths))
+        try:
+            filtered_paths = cast(
+                Iterable[SearchResult],
+                (
+                    (path, term_freq, tfidf)
+                    for path, term_freq, tfidf in paths
+                    if any(fspath(path).startswith(gp) for gp in grouppaths)  # type: ignore[arg-type]
+                ),
+            )
+        except TypeError as e:
+            raise RuntimeError(e)
 
         if sortby == "path":
-            return sorted(paths, key=itemgetter(0), reverse=False)
-        elif sortby == "freq":
-            return sorted(paths, key=itemgetter(1), reverse=True)
+            return sorted(filtered_paths, key=itemgetter(0), reverse=False)
+        elif sortby == "term_freq":
+            return sorted(filtered_paths, key=itemgetter(1), reverse=True)
+        elif sortby == "tfidf":
+            return sorted(filtered_paths, key=itemgetter(2), reverse=True)
+        else:
+            assert False
 
-    def search_token(self, groupname: str, field: str, token: str, sortby: str = "path") -> List[Tuple[Path, int]]:
+    def search_token(self, groupname: str, field: str, token: str, sortby: str = "path") -> List[SearchResult]:
 
         paths = self.invindex.get_paths(field, token)
         return self._sorted(groupname, paths, sortby)
 
     def search_tokens_and(
         self, groupname: str, field: str, tokens: Sequence[str], sortby: str = "path"
-    ) -> List[Tuple[Path, int]]:
+    ) -> List[SearchResult]:
 
         paths = self.invindex.get_paths_op(field, tokens, set.intersection)
         return self._sorted(groupname, paths, sortby)
 
     def search_tokens_or(
         self, groupname: str, field: str, tokens: Sequence[str], sortby: str = "path"
-    ) -> List[Tuple[Path, int]]:
+    ) -> List[SearchResult]:
 
         paths = self.invindex.get_paths_op(field, tokens, set.union)
         return self._sorted(groupname, paths, sortby)

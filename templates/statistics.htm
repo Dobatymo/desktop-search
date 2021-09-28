@@ -14,5 +14,12 @@ File types:
 {% endfor %}
 </ul>
 
+<h3>Memory usage</h3>
+<ul>
+{% for name, size in stats["memory-usage"].items() %}
+<li>{{name}}: {{size}}</li>
+{% endfor %}
+</ul>
+
 </body>
 </html>

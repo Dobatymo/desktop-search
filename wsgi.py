@@ -205,6 +205,7 @@ def statistics():
         "files": len(invindex.ids2docs),
         "tokens": {k: len(v) for k, v in invindex.table.items()},
         "suffixes": Counter(path.suffix for path in invindex.docs2ids),
+        "memory-usage": {name: humanize.naturalsize(b, binary=True) for name, b in invindex._memory_usage().items()},
     }
 
     return render_template("statistics.htm", stats=stats)
@@ -280,7 +281,7 @@ def index():
             abort(400)
         if op not in ("and", "or"):
             abort(400)
-        if sortby not in ("path", "freq"):
+        if sortby not in ("path", "term_freq", "tfidf"):
             abort(400)
 
         paths = retriever.search_text(groupname, field, text, op, sortby)
