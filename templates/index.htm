@@ -24,6 +24,11 @@
 <label for="sortby">sort by:</label>
 <select name="sortby" required="required">
   <option value="path" selected="selected">Path (asc)</option>
+  <option value="score">Score (desc)</option>
+</select>
+<label for="scoring">Scoring:</label>
+<select name="scoring" required="required">
+  <option value="unscored" selected="selected">Unscored</option>
   <option value="term_freq">Term frequency (desc)</option>
   <option value="tfidf">tf–idf (desc)</option>
 </select>
@@ -35,8 +40,8 @@
 {{ paths|length }} results found for <strong>{{ text }}</strong>.
 
 <ul>
-{% for path, term_freq, tfidf in paths %}
-<li><a href="{{ url_for('open_file', path=path) }}">{{path}}</a> [<a href="{{ url_for('view_file', path=path) }}">raw</a>, <a href="{{ url_for('view_file_highlight', path=path) }}">html</a>] ({{term_freq}}, {{tfidf}})</li>
+{% for path, rank in paths %}
+<li><a href="{{ url_for('open_file', path=path) }}">{{path}}</a> [<a href="{{ url_for('view_file', path=path) }}">raw</a>, <a href="{{ url_for('view_file_highlight', path=path) }}">html</a>] ({{rank}})</li>
 {% endfor %}
 </ul>
 {% endif %}

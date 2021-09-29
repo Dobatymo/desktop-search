@@ -1,16 +1,18 @@
 from __future__ import generator_stop
 
+from backend.memory import IndexerMemory, InvertedIndexMemory, RetrieverMemory
 from genutility.json import read_json
 from tqdm import tqdm
 
-from utils import Indexer, InvertedIndex, Retriever, valid_groups
+from utils import CodeAnalyzer, valid_groups
 
 
 def main(groups):
 
-    index = InvertedIndex()
-    indexer = Indexer(index)
-    retriever = Retriever(index)
+    analyzer = CodeAnalyzer()
+    index = InvertedIndexMemory(analyzer)
+    indexer = IndexerMemory(index)
+    retriever = RetrieverMemory(index)
 
     _groups = valid_groups(groups)
     indexer.groups = _groups

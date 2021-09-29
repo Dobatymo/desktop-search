@@ -23,9 +23,16 @@ from jsonschema import ValidationError
 from markupsafe import Markup
 from tqdm import tqdm
 
+from backends.memory import (
+    OP_METHODS,
+    SCORING_METHODS,
+    SORTBY_METHODS,
+    IndexerMemory,
+    InvertedIndexMemory,
+    RetrieverMemory,
+)
 from nlp import DEFAULT_CONFIG as DEFAULT_NLP_CONFIG
-from nlp import Preprocess
-from utils import Indexer, IndexerError, InvertedIndex, Retriever, valid_groups
+from utils import CodeAnalyzer, IndexerError, valid_groups
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -74,18 +81,18 @@ def read_config():
 def read_index():
 
     assert appdata_dir
-    preprocess = Preprocess()
+    analyzer = CodeAnalyzer(DEFAULT_NLP_CONFIG)
 
     try:
         indexer = read_pickle(appdata_dir / INDEX_FILE)
         invindex = indexer.invindex
-        invindex.init(preprocess)
+        invindex.set_analyzer(analyzer)
     except FileNotFoundError:
-        invindex = InvertedIndex(preprocess)
-        indexer = Indexer(invindex)
+        invindex = InvertedIndexMemory(analyzer)
+        indexer = IndexerMemory(invindex)
 
-    retriever = Retriever(invindex)
-    retriever.groups = indexer.groups
+    retriever = RetrieverMemory(invindex)
+    retriever.set_groups(indexer.groups)
     return invindex, indexer, retriever
 
 
@@ -168,14 +175,18 @@ def reindex():
         return redirect(url_for("index"))
 
     _groups = valid_groups(groups)
-    indexer.groups = _groups
-    retriever.groups = _groups
+    indexer.set_groups(_groups)
+    retriever.set_groups(_groups)
 
     suffixes = set(config.get("extensions", DEFAULT_EXTENSIONS))
 
     with tqdm() as pbar, MeasureTime() as seconds:
         try:
-            docs_added, docs_removed = indexer.index(  # fixme: add a lock here so it cannot be run multiple times
+            (
+                docs_added,
+                docs_removed,
+                docs_updated,
+            ) = indexer.index(  # fixme: add a lock here so it cannot be run multiple times
                 suffixes, partial, gitignore, nlp_config, progressfunc=lambda x: pbar.update(1)
             )
         except FileNotFoundError as e:
@@ -189,7 +200,7 @@ def reindex():
 
         delta = humanize.naturaldelta(timedelta(seconds=seconds.get()))
         flash(
-            f"Indexed {docs_added} new documents and removed {docs_removed} old ones in {delta}.",
+            f"Indexed {docs_added} new documents, removed {docs_removed} old ones and updated {docs_updated} in {delta}.",
             "info",
         )
 
@@ -272,6 +283,7 @@ def index():
     text = request.form.get("text", "")
     op = request.form.get("op")
     sortby = request.form.get("sortby")
+    scoring = request.form.get("scoring")
 
     if text:
 
@@ -279,12 +291,14 @@ def index():
             abort(400)
         if field not in ("code", "text"):
             abort(400)
-        if op not in ("and", "or"):
+        if op not in OP_METHODS:
             abort(400)
-        if sortby not in ("path", "term_freq", "tfidf"):
+        if sortby not in SORTBY_METHODS:
+            abort(400)
+        if scoring not in SCORING_METHODS:
             abort(400)
 
-        paths = retriever.search_text(groupname, field, text, op, sortby)
+        paths = retriever.search_text(groupname, field, text, op, sortby, scoring)
     else:
         paths = []
 
@@ -299,7 +313,7 @@ def index():
         paths=paths,
         stats=stats,
         groupnames=groupnames,
-        config=invindex.config,
+        config=invindex.analyzer.config,
     )
 
 
