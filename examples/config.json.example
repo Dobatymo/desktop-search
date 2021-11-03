@@ -9,5 +9,5 @@
 		]
 	},
 	"open": "\"C:\\Program Files\\Notepad++\\notepad++.exe\" \"{path}\"",
-	"extensions": [".py", ".pyw", ".js", ".rs"]
+	"extensions": [".py", ".pyw", ".pyx", ".pxd", ".js", ".rs"]
 }

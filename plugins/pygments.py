@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 class PygmentsPlugin(TokenizerPlugin):
 
-    suffixes = [".rs", ".c", ".cpp", ".htm", ".html"]
+    suffixes = [".rs", ".c", ".cpp", ".htm", ".html", ".pyx", ".pxd", ".pxi"]
 
     exceptions = {
         UnicodeDecodeError: "Skipping {path}: file is not valid utf-8",
