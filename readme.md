@@ -3,7 +3,7 @@
 Simple app to search the contents of local files. At the moment only python files are supported.
 
 ## Install and run
-- Install Python 3.5 or higher.
+- Install Python 3.7 or higher.
 - `py -m pip install -r requirements.txt` (Windows) / `python3 -m pip install -r requirements.txt` (Linux)
 - Create a json file called paths.json with the directories which should be indexed. Eg. `{"paths": ["C:\\Repositories", "D:\\Software\\Source"]}`.
 - Run `wsgi.py` (Windows) / `python3 wsgi.py` (Linux)

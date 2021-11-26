@@ -1,5 +1,3 @@
-from __future__ import generator_stop
-
 from backend.memory import IndexerMemory, InvertedIndexMemory, RetrieverMemory
 from genutility.json import read_json
 from tqdm import tqdm

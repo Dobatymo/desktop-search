@@ -1,7 +1,7 @@
-from __future__ import annotations, generator_stop
+from __future__ import annotations
 
 import tokenize
-from typing import TYPE_CHECKING, Iterator, Tuple
+from typing import TYPE_CHECKING, Iterator
 
 from plugin import TokenizerPlugin
 
@@ -19,7 +19,7 @@ class PythonPlugin(TokenizerPlugin):
         SyntaxError: "SyntaxError in {path}: {exc}",
     }
 
-    def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
+    def _tokenize(self, path: Path) -> Iterator[tuple[str, str]]:
 
         code_tokens = (tokenize.NAME, tokenize.NUMBER)
         text_tokens = (tokenize.STRING, tokenize.COMMENT)

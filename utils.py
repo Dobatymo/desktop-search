@@ -1,10 +1,10 @@
-from __future__ import annotations, generator_stop
+from __future__ import annotations
 
 import logging
 from importlib import import_module
 from itertools import chain
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Sequence, Set
 
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
@@ -25,14 +25,12 @@ class IndexerError(Exception):
     pass
 
 
-def valid_groups(groups):
-    # type: (Dict[str, List[str]], ) -> Dict[str, Set[Path]]
+def valid_groups(groups: dict[str, list[str]]) -> dict[str, set[Path]]:
 
     return {name: set(map(Path, paths)) for name, paths in groups.items()}
 
 
-def _gitignore_iterdir(path, spec):
-    # type: (Path, Patterns) -> Iterator[Path]
+def _gitignore_iterdir(path: Path, spec: Patterns) -> Iterator[Path]:
 
     try:
         with (path / ".gitignore").open("r", encoding="utf-8") as fr:
@@ -52,8 +50,7 @@ def _gitignore_iterdir(path, spec):
                 yield from _gitignore_iterdir(item, spec)
 
 
-def gitignore_iterdir(path, defaultignore=[".git"]):
-    # type: (Path, Sequence[str]) -> Iterator[Path]
+def gitignore_iterdir(path: Path, defaultignore: Sequence[str] = [".git"]) -> Iterator[Path]:
 
     spec = PathSpec(map(GitWildMatchPattern, defaultignore))
     return _gitignore_iterdir(path, spec)
@@ -72,21 +69,21 @@ class CodeAnalyzer:
         "pygments": "PygmentsPlugin",
     }
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or DEFAULT_CONFIG
         self.preprocess = Preprocess()
         self.set_config(config)
 
     @classmethod
     def _get_tokenizers(
-        cls, preprocess: Preprocess, config: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, TokenizerPlugin]:
+        cls, preprocess: Preprocess, config: dict[str, Any] | None = None
+    ) -> dict[str, TokenizerPlugin]:
 
         tokenizers = {}  # type: Dict[str, TokenizerPlugin]
 
         for modname, clsname in cls.lexers.items():
             try:
-                module = import_module("plugins.{}".format(modname))
+                module = import_module(f"plugins.{modname}")
             except ImportError as e:
                 logging.warning("Could not import %s: %s", modname, e)
                 continue
@@ -101,12 +98,12 @@ class CodeAnalyzer:
 
         return tokenizers
 
-    def set_config(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def set_config(self, config: dict[str, Any] | None = None) -> None:
 
         self.config = config
         self.tokenizers = self._get_tokenizers(self.preprocess, config)
 
-    def analyze(self, path: Path) -> Dict[str, Dict[str, int]]:
+    def analyze(self, path: Path) -> dict[str, dict[str, int]]:
         try:
             lexer = self.tokenizers[path.suffix]
         except KeyError:
@@ -115,33 +112,33 @@ class CodeAnalyzer:
 
         return lexer.tokenize(path)
 
-    def query(self, field, query: str) -> List[str]:
+    def query(self, field, query: str) -> list[str]:
         return self.preprocess.text(self.config[field], query)
 
 
 class RetrieverBase:
     def __init__(self):
-        self.groups: Dict[str, Set[Path]] = {}
+        self.groups: dict[str, set[Path]] = {}
 
-    def set_groups(self, groups: Dict[str, Set[Path]]):
+    def set_groups(self, groups: dict[str, set[Path]]):
         self.groups = groups
 
 
 class IndexerBase:
     def __init__(self):
-        self.groups: Dict[str, Set[Path]] = {}
-        self.mtimes: Dict[Path, int] = {}
+        self.groups: dict[str, set[Path]] = {}
+        self.mtimes: dict[Path, int] = {}
 
-    def set_groups(self, groups: Dict[str, Set[Path]]):
+    def set_groups(self, groups: dict[str, set[Path]]):
         self.groups = groups
 
     def _index(
         self,
-        suffixes: Set[str] = None,
+        suffixes: set[str] = None,
         partial: bool = True,
         gitignore: bool = False,
         progressfunc: Callable[[Path], Any] = None,
-    ) -> Tuple[int, int, int]:
+    ) -> tuple[int, int, int]:
         if partial:
             touched = set()  # type: Set[Path]
         else:

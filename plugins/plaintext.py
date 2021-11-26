@@ -1,6 +1,6 @@
-from __future__ import annotations, generator_stop
+from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterator, Tuple
+from typing import TYPE_CHECKING, Iterator
 
 from plugin import TokenizerPlugin
 
@@ -17,11 +17,11 @@ class PlaintextPlugin(TokenizerPlugin):
         ValueError: "ValueError in <{path}>: {exc}",
     }
 
-    def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
+    def _tokenize(self, path: Path) -> Iterator[tuple[str, str]]:
 
         filesize = path.stat().st_size
         if filesize > self.maxfilesize:
             raise ValueError(f"File exceeds maximum filesize ({filesize} > {self.maxfilesize})")
 
-        with open(path, "rt", encoding="utf-8") as fr:
+        with open(path, encoding="utf-8") as fr:
             yield "text", fr.read()
