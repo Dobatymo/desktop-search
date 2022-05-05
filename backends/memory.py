@@ -1,19 +1,14 @@
-from __future__ import annotations
-
 import logging
 from collections import defaultdict
 from math import log10
 from operator import itemgetter
 from os import fspath
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, DefaultDict, Iterable, Optional, Sequence, Tuple, Union, cast
+from typing import Any, Callable, DefaultDict, Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union, cast
 
 from genutility.exceptions import assert_choice
 
-from utils import IndexerBase, IndexerError, InvalidDocument, NotAnalyzable, RetrieverBase
-
-if TYPE_CHECKING:
-    from utils import CodeAnalyzer
+from utils import CodeAnalyzer, IndexerBase, IndexerError, InvalidDocument, NotAnalyzable, RetrieverBase
 
 OptionalSearchResult = Tuple[Optional[Path], Union[int, float]]
 SearchResult = Tuple[Path, Union[int, float]]
@@ -25,10 +20,10 @@ SCORING_METHODS = ("unscored", "term_freq", "tfidf")
 
 class InvertedIndexMemory:
 
-    docs2ids: dict[Path, int]
-    ids2docs: dict[int, Path | None]
-    table: dict[str, dict[str, dict[int, int]]]
-    doc_freqs: dict[str, dict[int, dict[str, int]]]
+    docs2ids: Dict[Path, int]
+    ids2docs: Dict[int, Optional[Path]]
+    table: Dict[str, Dict[str, Dict[int, int]]]
+    doc_freqs: Dict[str, Dict[int, Dict[str, int]]]
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -73,7 +68,7 @@ class InvertedIndexMemory:
 
         return self.add_document_freqs(path, freqs_dict)
 
-    def add_document_freqs(self, path: Path, freqs_dict: dict[str, dict[str, int]]):
+    def add_document_freqs(self, path: Path, freqs_dict: Dict[str, Dict[str, int]]):
         try:
             doc_id = self.docs2ids[path]
         except KeyError:
@@ -121,7 +116,7 @@ class InvertedIndexMemory:
                 for token, freqs in index.items():
                     freqs.pop(doc_id, None)
 
-    def get_docs(self, field: str, token: str) -> dict[int, int]:
+    def get_docs(self, field: str, token: str) -> Dict[int, int]:
         return self.table[field].get(token, {})  # get() does not insert key into defaultdict
 
     @staticmethod
@@ -151,7 +146,7 @@ class InvertedIndexMemory:
         return paths
 
     def get_paths_op(
-        self, field: str, tokens: Sequence[str], setop: Callable[..., set[int]], scoring: str = "unscored"
+        self, field: str, tokens: Sequence[str], setop: Callable[..., Set[int]], scoring: str = "unscored"
     ) -> Iterable[OptionalSearchResult]:
 
         assert_choice("scoring", scoring, SCORING_METHODS)
@@ -185,7 +180,7 @@ class InvertedIndexMemory:
 
         return paths
 
-    def _memory_usage(self) -> dict[str, int]:
+    def _memory_usage(self) -> Dict[str, int]:
         from pympler import asizeof
 
         return {
@@ -202,7 +197,7 @@ class RetrieverMemory(RetrieverBase):
         RetrieverBase.__init__(self)
         self.invindex = invindex
 
-    def _sorted(self, groupname: str, paths: Iterable[OptionalSearchResult], sortby="path") -> list[SearchResult]:
+    def _sorted(self, groupname: str, paths: Iterable[OptionalSearchResult], sortby="path") -> List[SearchResult]:
         assert_choice("sortby", sortby, SORTBY_METHODS)
 
         grouppaths = list(map(str, self.groups[groupname]))
@@ -227,28 +222,28 @@ class RetrieverMemory(RetrieverBase):
 
     def search_token(
         self, groupname: str, field: str, token: str, sortby: str = "path", scoring: str = "unscored"
-    ) -> list[SearchResult]:
+    ) -> List[SearchResult]:
 
         paths = self.invindex.get_paths(field, token, scoring)
         return self._sorted(groupname, paths, sortby)
 
     def search_tokens_and(
         self, groupname: str, field: str, tokens: Sequence[str], sortby: str = "path", scoring: str = "unscored"
-    ) -> list[SearchResult]:
+    ) -> List[SearchResult]:
 
         paths = self.invindex.get_paths_op(field, tokens, set.intersection, scoring)
         return self._sorted(groupname, paths, sortby)
 
     def search_tokens_or(
         self, groupname: str, field: str, tokens: Sequence[str], sortby: str = "path", scoring: str = "unscored"
-    ) -> list[SearchResult]:
+    ) -> List[SearchResult]:
 
         paths = self.invindex.get_paths_op(field, tokens, set.union, scoring)
         return self._sorted(groupname, paths, sortby)
 
     def search_text(
         self, groupname: str, field: str, text: str, op: str, sortby: str = "path", scoring: str = "unscored"
-    ) -> list[SearchResult]:
+    ) -> List[SearchResult]:
 
         if op not in OP_METHODS:
             raise ValueError("`op` must be 'and' or 'or'")
@@ -272,12 +267,12 @@ class IndexerMemory(IndexerBase):
 
     def index(
         self,
-        suffixes: set[str] = None,
+        suffixes: Set[str] = None,
         partial: bool = True,
         gitignore: bool = False,
-        config: dict[str, Any] | None = None,
+        config: Optional[Dict[str, Any]] = None,
         progressfunc: Callable[[Path], Any] = None,
-    ) -> tuple[int, int, int]:
+    ) -> Tuple[int, int, int]:
 
         """Searches Indexer.paths for indexable files and indexes them.
         Returns the number of files added to the index.

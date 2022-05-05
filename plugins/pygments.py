@@ -1,6 +1,5 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any, Iterator
+from pathlib import Path
+from typing import Any, Dict, Iterator, Optional, Tuple
 
 from genutility.file import read_file
 from pygments.lexers import get_lexer_for_filename
@@ -9,9 +8,6 @@ from pygments.util import ClassNotFound
 
 from nlp import Preprocess
 from plugin import NoLexerFound, TokenizerPlugin
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class PygmentsPlugin(TokenizerPlugin):
@@ -22,11 +18,11 @@ class PygmentsPlugin(TokenizerPlugin):
         UnicodeDecodeError: "Skipping {path}: file is not valid utf-8",
     }
 
-    def __init__(self, preprocess: Preprocess, config: dict[str, Any] | None = None):
+    def __init__(self, preprocess: Preprocess, config: Optional[Dict[str, Any]] = None):
         TokenizerPlugin.__init__(self, preprocess, config)
-        self.cache: dict[str, Any] = {}
+        self.cache: Dict[str, Any] = {}
 
-    def _tokenize(self, path: Path) -> Iterator[tuple[str, str]]:
+    def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
 
         try:
             lexer = self.cache[path.suffix]

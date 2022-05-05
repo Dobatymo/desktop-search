@@ -1,17 +1,11 @@
-from __future__ import annotations
-
 import logging
 from collections import Counter, defaultdict
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 from typing import Counter as CounterT
-from typing import DefaultDict, Iterator
+from typing import DefaultDict, Dict, Iterator, List, Optional, Tuple, Type
 
-from nlp import DEFAULT_CONFIG
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from nlp import Preprocess
+from nlp import DEFAULT_CONFIG, Preprocess
 
 
 class NoLexerFound(Exception):
@@ -20,20 +14,20 @@ class NoLexerFound(Exception):
 
 class TokenizerPlugin:
 
-    exceptions: dict[type[Exception], str]
+    exceptions: Dict[Type[Exception], str]
 
-    def __init__(self, preprocess: Preprocess, config: dict[str, Any] | None = None):
+    def __init__(self, preprocess: Preprocess, config: Optional[Dict[str, Any]] = None):
 
         self.preprocess = preprocess
         self.config = config or DEFAULT_CONFIG
 
-    def _tokenize(self, path: Path) -> Iterator[tuple[str, str]]:
+    def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
 
         raise NotImplementedError
 
-    def tokenize(self, path: Path) -> dict[str, CounterT[str]]:
+    def tokenize(self, path: Path) -> Dict[str, CounterT[str]]:
 
-        tokens: DefaultDict[str, list[str]] = defaultdict(list)
+        tokens: DefaultDict[str, List[str]] = defaultdict(list)
 
         try:
             for field, token in self._tokenize(path):
@@ -46,7 +40,7 @@ class TokenizerPlugin:
             else:
                 raise
 
-        freqs: dict[str, CounterT[str]] = {}
+        freqs: Dict[str, CounterT[str]] = {}
 
         for field, fieldconfig in self.config.items():
             freqs[field] = Counter()

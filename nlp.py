@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from typing import Any
 from typing import Counter as CounterT
-from typing import Iterable
+from typing import Dict, Iterable, List
 
 import spacy
 
@@ -25,13 +23,13 @@ DEFAULT_CONFIG = {
 
 
 class Preprocess:
-    def __init__(self, model: str = "en_core_web_sm"):
+    def __init__(self, model: str = "en_core_web_sm") -> None:
 
         exclude = ["tok2vec", "parser", "ner"]
         self.nlp = spacy.load(model, exclude=exclude)
         assert self.nlp.pipe_names == ["tagger", "attribute_ruler", "lemmatizer"], self.nlp.pipe_names
 
-    def text(self, config: dict[str, Any], text: str) -> list[str]:
+    def text(self, config: Dict[str, Any], text: str) -> List[str]:
 
         if config["tokenize"]:
             doc = self.nlp(text)
@@ -53,7 +51,7 @@ class Preprocess:
             else:
                 return list(map(str2lower, tokens))
 
-    def batch(self, config: dict[str, Any], texts: Iterable[str], freqs: CounterT[str]) -> None:
+    def batch(self, config: Dict[str, Any], texts: Iterable[str], freqs: CounterT[str]) -> None:
 
         # fixme: don't store huge-ass tokens like in `get-pip.py`
 

@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from os import fspath
 from pathlib import Path
-from typing import Any, Callable, Iterable, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, Optional, Set, Tuple, Union
 
 from whoosh import writing
 from whoosh.fields import ID, NUMERIC, TEXT, Schema
@@ -70,19 +68,19 @@ class IndexerWhoosh(IndexerBase):
         IndexerBase.__init__(self)
 
         self.invindex = invindex
-        self.writer: writing.IndexWriter | None = None
+        self.writer: Optional[writing.IndexWriter] = None
 
     def getwriter(self):
         return self.invindex.ix.writer()
 
     def index(
         self,
-        suffixes: set[str] = None,
+        suffixes: Set[str] = None,
         partial: bool = True,
         gitignore: bool = False,
-        config: dict[str, Any] | None = None,
+        config: Optional[Dict[str, Any]] = None,
         progressfunc: Callable[[Path], Any] = None,
-    ) -> tuple[int, int, int]:
+    ) -> Tuple[int, int, int]:
 
         """Searches Indexer.paths for indexable files and indexes them.
         Returns the number of files added to the index.
@@ -98,7 +96,7 @@ class IndexerWhoosh(IndexerBase):
 
         return ret
 
-    def _read(self, path: Path) -> tuple[str, str]:
+    def _read(self, path: Path) -> Tuple[str, str]:
         with open(path, encoding="utf-8") as fr:
             data = fr.read()
 

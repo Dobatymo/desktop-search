@@ -1,20 +1,14 @@
-from __future__ import annotations
-
 import logging
 from importlib import import_module
 from itertools import chain
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Sequence, Set
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Collection
 
-from pathspec import PathSpec
+from pathspec import PathSpec, Pattern
 from pathspec.patterns import GitWildMatchPattern
 
 from nlp import DEFAULT_CONFIG, Preprocess
-
-if TYPE_CHECKING:
-    from pathspec import Patterns
-
-    from plugin import TokenizerPlugin
+from plugin import TokenizerPlugin
 
 
 class InvalidDocument(KeyError):
@@ -25,12 +19,12 @@ class IndexerError(Exception):
     pass
 
 
-def valid_groups(groups: dict[str, list[str]]) -> dict[str, set[Path]]:
+def valid_groups(groups: Dict[str, List[str]]) -> Dict[str, Set[Path]]:
 
     return {name: set(map(Path, paths)) for name, paths in groups.items()}
 
 
-def _gitignore_iterdir(path: Path, spec: Patterns) -> Iterator[Path]:
+def _gitignore_iterdir(path: Path, spec: Collection[Pattern]) -> Iterator[Path]:
 
     try:
         with (path / ".gitignore").open("r", encoding="utf-8") as fr:
@@ -69,17 +63,17 @@ class CodeAnalyzer:
         "pygments": "PygmentsPlugin",
     }
 
-    def __init__(self, config: dict[str, Any] | None = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         self.config = config or DEFAULT_CONFIG
         self.preprocess = Preprocess()
         self.set_config(config)
 
     @classmethod
     def _get_tokenizers(
-        cls, preprocess: Preprocess, config: dict[str, Any] | None = None
-    ) -> dict[str, TokenizerPlugin]:
+        cls, preprocess: Preprocess, config: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, TokenizerPlugin]:
 
-        tokenizers = {}  # type: Dict[str, TokenizerPlugin]
+        tokenizers: Dict[str, TokenizerPlugin] = {}
 
         for modname, clsname in cls.lexers.items():
             try:
@@ -98,12 +92,12 @@ class CodeAnalyzer:
 
         return tokenizers
 
-    def set_config(self, config: dict[str, Any] | None = None) -> None:
+    def set_config(self, config: Optional[Dict[str, Any]] = None) -> None:
 
         self.config = config
         self.tokenizers = self._get_tokenizers(self.preprocess, config)
 
-    def analyze(self, path: Path) -> dict[str, dict[str, int]]:
+    def analyze(self, path: Path) -> Dict[str, Dict[str, int]]:
         try:
             lexer = self.tokenizers[path.suffix]
         except KeyError:
@@ -112,35 +106,35 @@ class CodeAnalyzer:
 
         return lexer.tokenize(path)
 
-    def query(self, field, query: str) -> list[str]:
+    def query(self, field, query: str) -> List[str]:
         return self.preprocess.text(self.config[field], query)
 
 
 class RetrieverBase:
     def __init__(self):
-        self.groups: dict[str, set[Path]] = {}
+        self.groups: Dict[str, Set[Path]] = {}
 
-    def set_groups(self, groups: dict[str, set[Path]]):
+    def set_groups(self, groups: Dict[str, Set[Path]]):
         self.groups = groups
 
 
 class IndexerBase:
     def __init__(self):
-        self.groups: dict[str, set[Path]] = {}
-        self.mtimes: dict[Path, int] = {}
+        self.groups: Dict[str, Set[Path]] = {}
+        self.mtimes: Dict[Path, int] = {}
 
-    def set_groups(self, groups: dict[str, set[Path]]):
+    def set_groups(self, groups: Dict[str, Set[Path]]):
         self.groups = groups
 
     def _index(
         self,
-        suffixes: set[str] = None,
+        suffixes: Set[str] = None,
         partial: bool = True,
         gitignore: bool = False,
         progressfunc: Callable[[Path], Any] = None,
-    ) -> tuple[int, int, int]:
+    ) -> Tuple[int, int, int]:
         if partial:
-            touched = set()  # type: Set[Path]
+            touched: Set[Path] = set()
         else:
             self.mtimes = dict()
             add = True

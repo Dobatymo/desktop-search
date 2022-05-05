@@ -5,7 +5,7 @@ from tqdm import tqdm
 from utils import CodeAnalyzer, valid_groups
 
 
-def main(groups):
+def main(groups) -> None:
 
     analyzer = CodeAnalyzer()
     index = InvertedIndexMemory(analyzer)
@@ -17,7 +17,7 @@ def main(groups):
     retriever.groups = _groups
 
     with tqdm() as pbar:
-        indexer.index(progressfunc=lambda x: pbar.update(1))
+        indexer.index(progressfunc=lambda _: pbar.update(1))
 
     try:
         while True:

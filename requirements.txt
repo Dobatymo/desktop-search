@@ -3,7 +3,7 @@ calmjs.parse==1.3.0  # optional
 cheroot==8.5.2
 flask==2.0.2
 genutility[json]==0.0.78
-humanize==3.12.0
+humanize==3.13.1
 jsonschema==4.2.1
 MarkupSafe==2.0.1
 pathspec==0.9.0

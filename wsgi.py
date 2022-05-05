@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import logging
 import os
@@ -10,7 +8,7 @@ from collections import Counter
 from datetime import timedelta
 from os import fspath
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import humanize
 from appdirs import user_data_dir
@@ -64,8 +62,7 @@ indexer = None
 retriever = None
 
 
-def read_config():
-    # type: () -> dict
+def read_config() -> dict:
 
     assert appdata_dir
     config_path = appdata_dir / CONFIG_FILE
@@ -78,7 +75,7 @@ def read_config():
         sys.exit(1)
 
 
-def read_index():
+def read_index() -> Tuple[Any, Any, Any]:
 
     assert appdata_dir
     analyzer = CodeAnalyzer(DEFAULT_NLP_CONFIG)
@@ -317,7 +314,8 @@ def index():
     )
 
 
-if __name__ == "__main__":
+def main():
+    global appdata_dir, config, invindex, indexer, retriever
 
     import webbrowser
     from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
@@ -346,6 +344,9 @@ if __name__ == "__main__":
 
     app.run(host=args.host, port=args.port)
 
+
+if __name__ == "__main__":
+    main()
 else:
     appdata_dir = DEFAULT_APPDATA_DIR
     config = read_config()
