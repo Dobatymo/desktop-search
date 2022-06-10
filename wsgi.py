@@ -8,6 +8,7 @@ from collections import Counter
 from datetime import timedelta
 from os import fspath
 from pathlib import Path
+from random import randint
 from typing import Any, Dict, List, Optional, Tuple
 
 import humanize
@@ -263,7 +264,11 @@ def open_config():
 
 @app.route("/close-app", methods=["GET"])
 def close():
-    shutdown_server()
+    try:
+        shutdown_server()
+    except RuntimeError as e:
+        return str(e), 500
+
     return render_template("close.htm")
 
 
@@ -324,7 +329,9 @@ def main():
 
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument("--host", default="localhost", help="Server host")
-    parser.add_argument("--port", type=int, default=8080, help="Server port")
+    parser.add_argument(
+        "--port", type=int, default=None, help="Server port. If not specified, a random port will be used"
+    )
     parser.add_argument("-b", "--open-browser", action="store_true", help="Open browser after start")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable more print output")
     parser.add_argument("--appdata-dir", type=is_dir, default=DEFAULT_APPDATA_DIR, help="Path to appdata directory")
@@ -339,10 +346,15 @@ def main():
     config = read_config()
     invindex, indexer, retriever = read_index()
 
-    if args.open_browser:
-        webbrowser.open(f"http://{args.host}:{args.port}/")
+    if args.port:
+        port = args.port
+    else:
+        port = randint(1024, 65535)
 
-    app.run(host=args.host, port=args.port)
+    if args.open_browser:
+        webbrowser.open(f"http://{args.host}:{port}/")
+
+    app.run(host=args.host, port=port)
 
 
 if __name__ == "__main__":

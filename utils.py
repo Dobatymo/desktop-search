@@ -2,9 +2,9 @@ import logging
 from importlib import import_module
 from itertools import chain
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Collection
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple
 
-from pathspec import PathSpec, Pattern
+from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 from nlp import DEFAULT_CONFIG, Preprocess
@@ -24,14 +24,13 @@ def valid_groups(groups: Dict[str, List[str]]) -> Dict[str, Set[Path]]:
     return {name: set(map(Path, paths)) for name, paths in groups.items()}
 
 
-def _gitignore_iterdir(path: Path, spec: Collection[Pattern]) -> Iterator[Path]:
+def _gitignore_iterdir(path: Path, spec: PathSpec) -> Iterator[Path]:
 
     try:
         with (path / ".gitignore").open("r", encoding="utf-8") as fr:
             patterns = list(fr)
 
-        cpatterns = list(map(GitWildMatchPattern, patterns)) + spec.patterns
-        spec = PathSpec(cpatterns)
+        spec = spec + PathSpec(map(GitWildMatchPattern, patterns))
 
     except FileNotFoundError:
         pass
