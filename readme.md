@@ -3,11 +3,24 @@
 Simple app to search the contents of local files. At the moment only python files are supported.
 
 ## Install and run
+
 - Install Python 3.7 or higher.
-- `py -m pip install -r requirements.txt` (Windows) / `python3 -m pip install -r requirements.txt` (Linux)
-- `py -m spacy download en_core_web_sm`
 - Create a config file based on `examples/config.json.example` and save as `config.json`.
-- Run `py -3 wsgi.py` (Windows) / `python3 wsgi.py` (Linux)
+
+### Windows
+
+- `py -m pip install poetry`
+- `py -m poetry install`
+- `py -m poetry run python -m spacy download en_core_web_sm`
+
+### Linux
+
+- `python3 -m pip install poetry`
+- `poetry install`
+- `poetry run python -m spacy download en_core_web_sm`
+
+### Run
+- Run `py -m poetry run python wsgi.py -b` (Windows) / `poetry run python wsgi.py -b` (Linux)
 - Open <http://localhost:8080/> in your browser to index and search your files.
 
 ## Purpose
@@ -24,4 +37,4 @@ Searching itself is super fast. The indexing step is around 5000 files per minut
 - add more tokenizers
 
 ## Optional dependenices
-- `pip install future-fstrings` to handle files which specifiy `coding: future_fstrings`
+- `pip install future-fstrings` to handle files which specify `coding: future_fstrings`

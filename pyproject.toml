@@ -17,7 +17,7 @@ license = "ISC license"
 app = "wsgi:main"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 Flask = "^2.1.1"
 MarkupSafe = "^2.1.1"
 appdirs = "^1.4.4"
