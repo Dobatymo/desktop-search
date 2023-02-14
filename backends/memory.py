@@ -19,7 +19,6 @@ SCORING_METHODS = ("unscored", "term_freq", "tfidf")
 
 
 class InvertedIndexMemory:
-
     docs2ids: Dict[Path, int]
     ids2docs: Dict[int, Optional[Path]]
     table: Dict[str, Dict[str, Dict[int, int]]]
@@ -37,7 +36,6 @@ class InvertedIndexMemory:
         self.analyzer = analyzer
 
     def __init__(self, analyzer: CodeAnalyzer, keep_docs: bool = True) -> None:
-
         """Set `keep_docs=False` to improve memory usage,
         but decrease `remove_document()` performance.
         """
@@ -47,7 +45,6 @@ class InvertedIndexMemory:
         self.clear()
 
     def clear(self) -> None:
-
         self.docs2ids = {}
         self.ids2docs = {}
         self.table = {
@@ -60,7 +57,6 @@ class InvertedIndexMemory:
         }
 
     def add_document(self, path: Path) -> bool:
-
         try:
             freqs_dict = self.analyzer.analyze(path)
         except NotAnalyzable:
@@ -91,9 +87,7 @@ class InvertedIndexMemory:
 
         return True
 
-    def remove_document(self, path):
-        # type: (Path, ) -> None
-
+    def remove_document(self, path: Path) -> None:
         """If `InvertedIndex` was created with `keep_docs=True`,
         the complexity is O(number of unique tokens in document).
         If created with `keep_docs=False`,
@@ -124,7 +118,6 @@ class InvertedIndexMemory:
         return tf * idf
 
     def get_paths(self, field: str, token: str, scoring: str = "unscored") -> Iterable[OptionalSearchResult]:
-
         assert_choice("scoring", scoring, SCORING_METHODS)
 
         docs = self.get_docs(field, token)
@@ -148,7 +141,6 @@ class InvertedIndexMemory:
     def get_paths_op(
         self, field: str, tokens: Sequence[str], setop: Callable[..., Set[int]], scoring: str = "unscored"
     ) -> Iterable[OptionalSearchResult]:
-
         assert_choice("scoring", scoring, SCORING_METHODS)
 
         sets = tuple(set(self.get_docs(field, token).keys()) for token in tokens)
@@ -159,7 +151,7 @@ class InvertedIndexMemory:
             paths = ((self.ids2docs[doc_id], i) for i, doc_id in enumerate(docs_op))
 
         elif scoring == "term_freq":
-            term_freqs = defaultdict(int)  # type: DefaultDict[int, int]
+            term_freqs: DefaultDict[int, int] = defaultdict(int)
             for token in tokens:
                 docs = self.get_docs(field, token)
                 for doc_id, term_freq in docs.items():
@@ -167,7 +159,7 @@ class InvertedIndexMemory:
             paths = ((self.ids2docs[doc_id], term_freqs[doc_id]) for doc_id in docs_op)
 
         elif scoring == "tfidf":
-            tfidf = defaultdict(float)  # type: DefaultDict[int, float]
+            tfidf: DefaultDict[int, float] = defaultdict(float)
             for token in tokens:
                 docs = self.get_docs(field, token)
                 if docs:
@@ -223,28 +215,24 @@ class RetrieverMemory(RetrieverBase):
     def search_token(
         self, groupname: str, field: str, token: str, sortby: str = "path", scoring: str = "unscored"
     ) -> List[SearchResult]:
-
         paths = self.invindex.get_paths(field, token, scoring)
         return self._sorted(groupname, paths, sortby)
 
     def search_tokens_and(
         self, groupname: str, field: str, tokens: Sequence[str], sortby: str = "path", scoring: str = "unscored"
     ) -> List[SearchResult]:
-
         paths = self.invindex.get_paths_op(field, tokens, set.intersection, scoring)
         return self._sorted(groupname, paths, sortby)
 
     def search_tokens_or(
         self, groupname: str, field: str, tokens: Sequence[str], sortby: str = "path", scoring: str = "unscored"
     ) -> List[SearchResult]:
-
         paths = self.invindex.get_paths_op(field, tokens, set.union, scoring)
         return self._sorted(groupname, paths, sortby)
 
     def search_text(
         self, groupname: str, field: str, text: str, op: str, sortby: str = "path", scoring: str = "unscored"
     ) -> List[SearchResult]:
-
         if op not in OP_METHODS:
             raise ValueError("`op` must be 'and' or 'or'")
 
@@ -273,7 +261,6 @@ class IndexerMemory(IndexerBase):
         config: Optional[Dict[str, Any]] = None,
         progressfunc: Callable[[Path], Any] = None,
     ) -> Tuple[int, int, int]:
-
         """Searches Indexer.paths for indexable files and indexes them.
         Returns the number of files added to the index.
         """

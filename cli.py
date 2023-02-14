@@ -6,7 +6,6 @@ from utils import CodeAnalyzer, valid_groups
 
 
 def main(groups) -> None:
-
     analyzer = CodeAnalyzer()
     index = InvertedIndexMemory(analyzer)
     indexer = IndexerMemory(index)
@@ -30,7 +29,6 @@ def main(groups) -> None:
 
 
 if __name__ == "__main__":
-
     groups = read_json("config.json")["groups"]
 
     main(groups)

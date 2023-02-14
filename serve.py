@@ -3,7 +3,6 @@ from cheroot.wsgi import Server
 from wsgi import app
 
 if __name__ == "__main__":
-
     from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)

@@ -6,7 +6,6 @@ from plugin import TokenizerPlugin
 
 
 class PythonPlugin(TokenizerPlugin):
-
     suffixes = {".py", ".pyw"}
 
     exceptions = {
@@ -16,7 +15,6 @@ class PythonPlugin(TokenizerPlugin):
     }
 
     def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
-
         code_tokens = (tokenize.NAME, tokenize.NUMBER)
         text_tokens = (tokenize.STRING, tokenize.COMMENT)
 

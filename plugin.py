@@ -13,20 +13,16 @@ class NoLexerFound(Exception):
 
 
 class TokenizerPlugin:
-
     exceptions: Dict[Type[Exception], str]
 
     def __init__(self, preprocess: Preprocess, config: Optional[Dict[str, Any]] = None):
-
         self.preprocess = preprocess
         self.config = config or DEFAULT_CONFIG
 
     def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
-
         raise NotImplementedError
 
     def tokenize(self, path: Path) -> Dict[str, CounterT[str]]:
-
         tokens: DefaultDict[str, List[str]] = defaultdict(list)
 
         try:

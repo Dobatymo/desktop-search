@@ -5,7 +5,6 @@ from plugin import TokenizerPlugin
 
 
 class PlaintextPlugin(TokenizerPlugin):
-
     suffixes = {".txt", ".md"}
     maxfilesize = 1000000  # see spacy `nlp.max_length`
 
@@ -14,7 +13,6 @@ class PlaintextPlugin(TokenizerPlugin):
     }
 
     def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
-
         filesize = path.stat().st_size
         if filesize > self.maxfilesize:
             raise ValueError(f"File exceeds maximum filesize ({filesize} > {self.maxfilesize})")

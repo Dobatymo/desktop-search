@@ -42,7 +42,6 @@ class RetrieverWhoosh(RetrieverBase):
     def search_text(
         self, groupname: str, field: str, text: str, op: str, sortby: str = "path", scoring: str = "unscored"
     ) -> Iterable[SearchResult]:
-
         assert sortby in ("path", "score")
         assert scoring in ("unscored", "bm25f")
         scored = scoring != "unscored"
@@ -81,7 +80,6 @@ class IndexerWhoosh(IndexerBase):
         config: Optional[Dict[str, Any]] = None,
         progressfunc: Callable[[Path], Any] = None,
     ) -> Tuple[int, int, int]:
-
         """Searches Indexer.paths for indexable files and indexes them.
         Returns the number of files added to the index.
         """
@@ -130,7 +128,6 @@ class IndexerWhoosh(IndexerBase):
 
 
 if __name__ == "__main__":
-
     whooshindex = WhooshIndex(Path("indexdir"))
     retriever = RetrieverWhoosh(whooshindex)
     indexer = IndexerWhoosh(whooshindex)

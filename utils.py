@@ -20,12 +20,10 @@ class IndexerError(Exception):
 
 
 def valid_groups(groups: Dict[str, List[str]]) -> Dict[str, Set[Path]]:
-
     return {name: set(map(Path, paths)) for name, paths in groups.items()}
 
 
 def _gitignore_iterdir(path: Path, spec: PathSpec) -> Iterator[Path]:
-
     try:
         with (path / ".gitignore").open("r", encoding="utf-8") as fr:
             patterns = list(fr)
@@ -44,7 +42,6 @@ def _gitignore_iterdir(path: Path, spec: PathSpec) -> Iterator[Path]:
 
 
 def gitignore_iterdir(path: Path, defaultignore: Sequence[str] = [".git"]) -> Iterator[Path]:
-
     spec = PathSpec(map(GitWildMatchPattern, defaultignore))
     return _gitignore_iterdir(path, spec)
 
@@ -54,7 +51,6 @@ class NotAnalyzable(Exception):
 
 
 class CodeAnalyzer:
-
     lexers = {
         "calmjs": "CalmjsPlugin",
         "plaintext": "PlaintextPlugin",
@@ -71,7 +67,6 @@ class CodeAnalyzer:
     def _get_tokenizers(
         cls, preprocess: Preprocess, config: Optional[Dict[str, Any]] = None
     ) -> Dict[str, TokenizerPlugin]:
-
         tokenizers: Dict[str, TokenizerPlugin] = {}
 
         for modname, clsname in cls.lexers.items():
@@ -92,7 +87,6 @@ class CodeAnalyzer:
         return tokenizers
 
     def set_config(self, config: Optional[Dict[str, Any]] = None) -> None:
-
         self.config = config
         self.tokenizers = self._get_tokenizers(self.preprocess, config)
 
@@ -143,14 +137,12 @@ class IndexerBase:
         docs_updated = 0
 
         for path in chain.from_iterable(self.groups.values()):
-
             if gitignore:
                 it = gitignore_iterdir(path)
             else:
                 it = path.rglob("*")
 
             for filename in it:
-
                 if suffixes:
                     if filename.suffix not in suffixes:
                         continue

@@ -10,7 +10,6 @@ from plugin import TokenizerPlugin
 
 
 class CalmjsPlugin(TokenizerPlugin):
-
     suffixes = [".js"]
 
     exceptions = {
@@ -19,7 +18,6 @@ class CalmjsPlugin(TokenizerPlugin):
     }
 
     def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
-
         lexer = Lexer(yield_comments=True)
         text = read_file(path, "rt", encoding="utf-8")
         lexer.input(text)

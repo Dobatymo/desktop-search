@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import platform
-import subprocess
+import subprocess  # nosec
 import sys
 from collections import Counter
 from datetime import timedelta
@@ -43,12 +43,12 @@ DEFAULT_APPDATA_DIR = Path(user_data_dir(APP_NAME, APP_AUTHOR))
 CONFIG_FILE = "config.json"
 INDEX_FILE = "index.p.gz"
 
-DEFAULT_GROUPS = {}  # type: Dict[str, List[str]]
+DEFAULT_GROUPS: Dict[str, List[str]] = {}
 if platform.system() == "Windows":
     DEFAULT_OPEN = 'notepad "{path}"'
 else:
     DEFAULT_OPEN = 'edit "{path}"'
-DEFAULT_EXTENSIONS = []  # type: List[str]
+DEFAULT_EXTENSIONS: List[str] = []
 
 DEFAULT_CONFIG = {
     "groups": DEFAULT_GROUPS,
@@ -56,7 +56,7 @@ DEFAULT_CONFIG = {
     "extensions": DEFAULT_EXTENSIONS,
 }
 
-appdata_dir = None  # type: Optional[Path]
+appdata_dir: Optional[Path] = None
 config = None
 invindex = None
 indexer = None
@@ -64,7 +64,6 @@ retriever = None
 
 
 def read_config() -> dict:
-
     assert appdata_dir
     config_path = appdata_dir / CONFIG_FILE
     try:
@@ -77,7 +76,6 @@ def read_config() -> dict:
 
 
 def read_index() -> Tuple[Any, Any, Any]:
-
     assert appdata_dir
     analyzer = CodeAnalyzer(DEFAULT_NLP_CONFIG)
 
@@ -95,7 +93,6 @@ def read_index() -> Tuple[Any, Any, Any]:
 
 
 def shutdown_server():
-
     # cheroot
     if "close" in app.config:
         app.config["close"]()
@@ -114,13 +111,17 @@ def shutdown_server():
 def open_file(path):
     cmd = config.get("open", DEFAULT_OPEN)
 
-    try:
-        cmd = cmd.format(path=path)
-    except KeyError:
-        msg = Markup("Invalid open command: <pre>{}</pre>").format(cmd)
-        flash(msg, "error")
+    if Path(path).is_file():
+        try:
+            cmd = cmd.format(path=path)
+        except KeyError:
+            msg = Markup("Invalid open command: <pre>{}</pre>").format(cmd)
+            flash(msg, "error")
+        else:
+            subprocess.run(cmd, shell=True)  # nosec
     else:
-        subprocess.run(cmd, shell=True)
+        msg = Markup("Invalid file: <pre>{}</pre>").format(path)
+        flash(msg, "error")
 
     return render_template("back.htm")  # don't redirect but go back in history for better caching
 
@@ -209,7 +210,6 @@ def reindex():
 
 @app.route("/statistics", methods=["GET"])
 def statistics():
-
     stats = {
         "files": len(invindex.ids2docs),
         "tokens": {k: len(v) for k, v in invindex.table.items()},
@@ -252,7 +252,7 @@ def open_config():
         return render_template("config.htm", config=config_str)
 
     try:
-        proc = subprocess.run(cmd, shell=True)
+        proc = subprocess.run(cmd, shell=True)  # nosec
         proc.check_returncode()
     except subprocess.CalledProcessError as e:
         msg = Markup("Failed to open config file: <pre>{}</pre>").format(e)
@@ -274,7 +274,6 @@ def close():
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-
     groupnames = config.get("groups", DEFAULT_GROUPS).keys()
 
     if not groupnames:
@@ -288,7 +287,6 @@ def index():
     scoring = request.form.get("scoring")
 
     if text:
-
         if groupname not in groupnames:
             abort(400)
         if field not in ("code", "text"):
@@ -349,7 +347,7 @@ def main():
     if args.port:
         port = args.port
     else:
-        port = randint(1024, 65535)
+        port = randint(1024, 65535)  # nosec
 
     if args.open_browser:
         webbrowser.open(f"http://{args.host}:{port}/")

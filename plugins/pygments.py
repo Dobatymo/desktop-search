@@ -11,7 +11,6 @@ from plugin import NoLexerFound, TokenizerPlugin
 
 
 class PygmentsPlugin(TokenizerPlugin):
-
     suffixes = [".rs", ".c", ".cpp", ".htm", ".html", ".pyx", ".pxd", ".pxi"]
 
     exceptions = {
@@ -23,7 +22,6 @@ class PygmentsPlugin(TokenizerPlugin):
         self.cache: Dict[str, Any] = {}
 
     def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
-
         try:
             lexer = self.cache[path.suffix]
         except KeyError:
