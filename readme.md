@@ -4,7 +4,7 @@ Simple app to search the contents of local files. At the moment only python file
 
 ## Install and run
 
-- Install Python 3.7 or higher.
+- Install Python 3.8 or higher.
 - Create a config file based on `examples/config.json.example` and save as `config.json`.
 
 ### Windows
@@ -36,5 +36,5 @@ Searching itself is super fast. The indexing step is around 5000 files per minut
 - search comments (with select natural language)
 - add more tokenizers
 
-## Optional dependenices
+## Optional dependencies
 - `pip install future-fstrings` to handle files which specify `coding: future_fstrings`
