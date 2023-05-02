@@ -14,6 +14,7 @@ class NoLexerFound(Exception):
 
 class TokenizerPlugin:
     exceptions: Dict[Type[Exception], str]
+    config: Dict[str, Any]
 
     def __init__(self, preprocess: Preprocess, config: Optional[Dict[str, Any]] = None):
         self.preprocess = preprocess
@@ -22,7 +23,7 @@ class TokenizerPlugin:
     def _tokenize(self, path: Path) -> Iterator[Tuple[str, str]]:
         raise NotImplementedError
 
-    def tokenize(self, path: Path) -> Dict[str, CounterT[str]]:
+    def tokenize(self, path: Path) -> Dict[str, Dict[str, int]]:
         tokens: DefaultDict[str, List[str]] = defaultdict(list)
 
         try:
@@ -45,4 +46,4 @@ class TokenizerPlugin:
             except ValueError as e:
                 logging.error("Preprocessing <%s> [%s] failed: %s", path, field, e)
 
-        return freqs
+        return dict(freqs)

@@ -14,8 +14,8 @@ OptionalSearchResult = Tuple[Optional[Path], Union[int, float]]
 SearchResult = Tuple[Path, Union[int, float]]
 
 OP_METHODS = ("and", "or")
-SORTBY_METHODS = ("path", "score")
-SCORING_METHODS = ("unscored", "term_freq", "tfidf")
+SORTBY_METHODS = frozenset(("path", "score"))
+SCORING_METHODS = frozenset(("unscored", "term_freq", "tfidf"))
 
 
 class InvertedIndexMemory:
@@ -255,18 +255,18 @@ class IndexerMemory(IndexerBase):
 
     def index(
         self,
-        suffixes: Set[str] = None,
+        suffixes: Optional[Set[str]] = None,
         partial: bool = True,
         gitignore: bool = False,
         config: Optional[Dict[str, Any]] = None,
-        progressfunc: Callable[[Path], Any] = None,
+        progressfunc: Optional[Callable[[Path], Any]] = None,
     ) -> Tuple[int, int, int]:
         """Searches Indexer.paths for indexable files and indexes them.
         Returns the number of files added to the index.
         """
 
         if partial:
-            if self.invindex.analyzer.config != config:
+            if config is not None and self.invindex.analyzer.config != config:
                 raise IndexerError("Changing case-sensitivity requires a full index rebuild")
         else:
             self.invindex.clear()
