@@ -74,11 +74,11 @@ class IndexerWhoosh(IndexerBase):
 
     def index(
         self,
-        suffixes: Set[str] = None,
+        suffixes: Optional[Set[str]] = None,
         partial: bool = True,
         gitignore: bool = False,
         config: Optional[Dict[str, Any]] = None,
-        progressfunc: Callable[[Path], Any] = None,
+        progressfunc: Optional[Callable[[Path], Any]] = None,
     ) -> Tuple[int, int, int]:
         """Searches Indexer.paths for indexable files and indexes them.
         Returns the number of files added to the index.

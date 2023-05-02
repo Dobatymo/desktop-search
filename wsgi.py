@@ -12,7 +12,6 @@ from random import randint
 from typing import Any, Dict, List, Optional, Tuple
 
 import humanize
-from appdirs import user_data_dir
 from flask import Flask, abort, flash, make_response, redirect, render_template, request, url_for
 from genutility.file import read_file
 from genutility.json import read_json, write_json
@@ -20,6 +19,7 @@ from genutility.pickle import read_pickle, write_pickle
 from genutility.time import MeasureTime
 from jsonschema import ValidationError
 from markupsafe import Markup
+from platformdirs import user_data_dir
 from tqdm import tqdm
 
 from backends.memory import (

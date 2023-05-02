@@ -28,7 +28,7 @@ def _gitignore_iterdir(path: Path, spec: PathSpec) -> Iterator[Path]:
         with (path / ".gitignore").open("r", encoding="utf-8") as fr:
             patterns = list(fr)
 
-        spec = spec + PathSpec(map(GitWildMatchPattern, patterns))
+        spec = spec + PathSpec.from_lines(GitWildMatchPattern, patterns)
 
     except FileNotFoundError:
         pass
@@ -42,7 +42,7 @@ def _gitignore_iterdir(path: Path, spec: PathSpec) -> Iterator[Path]:
 
 
 def gitignore_iterdir(path: Path, defaultignore: Sequence[str] = [".git"]) -> Iterator[Path]:
-    spec = PathSpec(map(GitWildMatchPattern, defaultignore))
+    spec = PathSpec.from_lines(GitWildMatchPattern, defaultignore)
     return _gitignore_iterdir(path, spec)
 
 
@@ -57,16 +57,14 @@ class CodeAnalyzer:
         "python": "PythonPlugin",
         "pygments": "PygmentsPlugin",
     }
+    config: Dict[str, Any]
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = config or DEFAULT_CONFIG
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
         self.preprocess = Preprocess()
         self.set_config(config)
 
     @classmethod
-    def _get_tokenizers(
-        cls, preprocess: Preprocess, config: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, TokenizerPlugin]:
+    def _get_tokenizers(cls, preprocess: Preprocess, config: Dict[str, Any]) -> Dict[str, TokenizerPlugin]:
         tokenizers: Dict[str, TokenizerPlugin] = {}
 
         for modname, clsname in cls.lexers.items():
@@ -87,8 +85,9 @@ class CodeAnalyzer:
         return tokenizers
 
     def set_config(self, config: Optional[Dict[str, Any]] = None) -> None:
-        self.config = config
-        self.tokenizers = self._get_tokenizers(self.preprocess, config)
+        _config = config or DEFAULT_CONFIG
+        self.config = _config
+        self.tokenizers = self._get_tokenizers(self.preprocess, _config)
 
     def analyze(self, path: Path) -> Dict[str, Dict[str, int]]:
         try:
@@ -104,15 +103,15 @@ class CodeAnalyzer:
 
 
 class RetrieverBase:
-    def __init__(self):
+    def __init__(self) -> None:
         self.groups: Dict[str, Set[Path]] = {}
 
-    def set_groups(self, groups: Dict[str, Set[Path]]):
+    def set_groups(self, groups: Dict[str, Set[Path]]) -> None:
         self.groups = groups
 
 
 class IndexerBase:
-    def __init__(self):
+    def __init__(self) -> None:
         self.groups: Dict[str, Set[Path]] = {}
         self.mtimes: Dict[Path, int] = {}
 
@@ -121,10 +120,10 @@ class IndexerBase:
 
     def _index(
         self,
-        suffixes: Set[str] = None,
+        suffixes: Optional[Set[str]] = None,
         partial: bool = True,
         gitignore: bool = False,
-        progressfunc: Callable[[Path], Any] = None,
+        progressfunc: Optional[Callable[[Path], Any]] = None,
     ) -> Tuple[int, int, int]:
         if partial:
             touched: Set[Path] = set()
