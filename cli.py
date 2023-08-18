@@ -1,6 +1,7 @@
 from backend.memory import IndexerMemory, InvertedIndexMemory, RetrieverMemory
 from genutility.json import read_json
-from tqdm import tqdm
+from genutility.rich import Progress
+from rich.progress import Progress as RichProgress
 
 from utils import CodeAnalyzer, valid_groups
 
@@ -15,8 +16,10 @@ def main(groups) -> None:
     indexer.groups = _groups
     retriever.groups = _groups
 
-    with tqdm() as pbar:
-        indexer.index(progressfunc=lambda _: pbar.update(1))
+    with RichProgress() as progress:
+        p = Progress(progress)
+        with p.task(description="Indexing...") as task:
+            indexer.index(progressfunc=lambda _: task.advance(1))
 
     try:
         while True:

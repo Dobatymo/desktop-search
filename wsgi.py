@@ -16,11 +16,12 @@ from flask import Flask, abort, flash, make_response, redirect, render_template,
 from genutility.file import read_file
 from genutility.json import read_json, write_json
 from genutility.pickle import read_pickle, write_pickle
+from genutility.rich import Progress
 from genutility.time import MeasureTime
 from jsonschema import ValidationError
 from markupsafe import Markup
 from platformdirs import user_data_dir
-from tqdm import tqdm
+from rich.progress import Progress as RichProgress
 
 from backends.memory import (
     OP_METHODS,
@@ -179,23 +180,25 @@ def reindex():
 
     suffixes = set(config.get("extensions", DEFAULT_EXTENSIONS))
 
-    with tqdm() as pbar, MeasureTime() as seconds:
-        try:
-            (
-                docs_added,
-                docs_removed,
-                docs_updated,
-            ) = indexer.index(  # fixme: add a lock here so it cannot be run multiple times
-                suffixes, partial, gitignore, nlp_config, progressfunc=lambda x: pbar.update(1)
-            )
-        except FileNotFoundError as e:
-            msg = Markup("FileNotFoundError: <pre>{}</pre>. Check the config file.").format(e)
-            flash(msg, "error")
-            return redirect(url_for("index"))
-        except IndexerError as e:
-            msg = Markup("{}.").format(e)
-            flash(msg, "error")
-            return redirect(url_for("index"))
+    with RichProgress() as progress, MeasureTime() as seconds:
+        p = Progress(progress)
+        with p.task(description="Indexing...") as task:
+            try:
+                (
+                    docs_added,
+                    docs_removed,
+                    docs_updated,
+                ) = indexer.index(  # fixme: add a lock here so it cannot be run multiple times
+                    suffixes, partial, gitignore, nlp_config, progressfunc=lambda _: task.advance(1)
+                )
+            except FileNotFoundError as e:
+                msg = Markup("FileNotFoundError: <pre>{}</pre>. Check the config file.").format(e)
+                flash(msg, "error")
+                return redirect(url_for("index"))
+            except IndexerError as e:
+                msg = Markup("{}.").format(e)
+                flash(msg, "error")
+                return redirect(url_for("index"))
 
         delta = humanize.naturaldelta(timedelta(seconds=seconds.get()))
         flash(

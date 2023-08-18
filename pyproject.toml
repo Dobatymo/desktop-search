@@ -31,8 +31,8 @@ jsonschema = "^4.4.0"
 pathspec = "^0.11.1"
 Pygments = "^2.11.2"
 spacy = "^3.5.2"
-tqdm = "^4.64.0"
-genutility = {extras = ["json"], version = "^0.0.99"}
+rich = ">=12.0.0"
+genutility = {extras = ["file", "json", "pickle", "rich", "time"], version = "^0.0.102"}
 Pympler = "^1.0.1"
 Whoosh = "^2.7.4"
 

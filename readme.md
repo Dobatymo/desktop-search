@@ -9,15 +9,19 @@ Simple app to search the contents of local files. At the moment only python file
 
 ### Windows
 
-- `py -m pip install poetry`
-- `py -m poetry install`
-- `py -m poetry run python -m spacy download en_core_web_sm`
+```batch
+py -m pip install poetry
+py -m poetry install
+py -m poetry run python -m spacy download en_core_web_sm
+```
 
 ### Linux
 
-- `python3 -m pip install poetry`
-- `poetry install`
-- `poetry run python -m spacy download en_core_web_sm`
+```shell
+python3 -m pip install poetry
+python3 -m poetry install
+python3 -m poetry run python -m spacy download en_core_web_sm
+```
 
 ### Run
 - Run `py -m poetry run python wsgi.py -b` (Windows) / `poetry run python wsgi.py -b` (Linux)
@@ -35,6 +39,7 @@ Searching itself is super fast. The indexing step is around 5000 files per minut
 ## Todo
 - search comments (with select natural language)
 - add more tokenizers
+- index files in archives like zip files
 
 ## Optional dependencies
 - `pip install future-fstrings` to handle files which specify `coding: future_fstrings`
