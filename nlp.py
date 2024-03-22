@@ -29,6 +29,9 @@ class Preprocess:
         assert self.nlp.pipe_names == ["tagger", "attribute_ruler", "lemmatizer"], self.nlp.pipe_names
 
     def text(self, config: Dict[str, Any], text: str) -> List[str]:
+        if not text:
+            return []
+
         if config["tokenize"]:
             doc = self.nlp(text)
             if config["case-sensitive"]:
@@ -43,11 +46,13 @@ class Preprocess:
                     return [tok.lower_ for tok in doc]
         else:
             assert not config.get("lemmatize", False)
-            tokens = text.split(" ")
+
             if config["case-sensitive"]:
-                return tokens
+                pass
             else:
-                return list(map(str2lower, tokens))
+                text = str2lower(text)
+
+            return text.split(" ")
 
     def batch(self, config: Dict[str, Any], texts: Iterable[str], freqs: CounterT[str]) -> None:
         # fixme: don't store huge-ass tokens like in `get-pip.py`
@@ -70,6 +75,15 @@ class Preprocess:
         else:
             assert not config.get("lemmatize", False)
             if config["case-sensitive"]:
-                freqs.update(texts)
+                for text in texts:
+                    if not text:
+                        continue
+                    tokens = text.split(" ")  # usually code tokens are without space, but it's not verified
+                    freqs.update(tokens)
             else:
-                freqs.update(map(str2lower, texts))
+                for text in texts:
+                    if not text:
+                        continue
+                    text = str2lower(text)
+                    tokens = text.split(" ")  # see above
+                    freqs.update(tokens)

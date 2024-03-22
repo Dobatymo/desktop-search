@@ -98,7 +98,7 @@ class CodeAnalyzer:
 
         return lexer.tokenize(path)
 
-    def query(self, field, query: str) -> List[str]:
+    def query(self, field: str, query: str) -> List[str]:
         return self.preprocess.text(self.config[field], query)
 
 

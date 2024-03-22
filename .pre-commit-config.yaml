@@ -28,12 +28,12 @@ repos:
   hooks:
   - id: pyproject-fmt
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.15.0
+  rev: v3.15.1
   hooks:
   - id: pyupgrade
     args: [--py37-plus]
-- repo: https://github.com/psf/black
-  rev: 24.1.1
+- repo: https://github.com/psf/black-pre-commit-mirror
+  rev: 24.3.0
   hooks:
   - id: black
 - repo: https://github.com/PyCQA/isort
@@ -41,7 +41,7 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/PyCQA/bandit
-  rev: 1.7.7
+  rev: 1.7.8
   hooks:
   - id: bandit
     args: [-c, pyproject.toml]
@@ -51,21 +51,21 @@ repos:
   hooks:
   - id: flake8
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.8.0
+  rev: v1.9.0
   hooks:
   - id: mypy
     args: [--ignore-missing-imports, --install-types, --non-interactive]
     additional_dependencies:
     - calmjs.parse==1.3.0        # optional
-    - cheroot==8.6.0
-    - flask==2.3.2
-    - genutility[file,json,pickle,rich,time]==0.0.102
-    - humanize==4.7.0
-    - jsonschema==4.19.0
-    - MarkupSafe==2.1.3
-    - pathspec==0.11.2
-    - platformdirs==3.10.0
-    - Pygments==2.16.1        # optional
+    - cheroot==10.0.0
+    - flask==3.0.2
+    - genutility[file,json,pickle,rich,time]==0.0.103
+    - humanize==4.9.0
+    - jsonschema==4.21.1
+    - MarkupSafe==2.1.5
+    - pathspec==0.12.1
+    - platformdirs==4.2.0
+    - Pygments==2.17.2        # optional
     - Pympler==1.0.1
-    - rich==13.5.2
-    - spacy==3.6.0
+    - rich==13.7.1
+    - spacy==3.7.4

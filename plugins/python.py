@@ -22,5 +22,6 @@ class PythonPlugin(TokenizerPlugin):
             for type, string, start, end, line in tokenize.generate_tokens(fr.readline):
                 if type in code_tokens:
                     yield "code", string
+                    assert " " not in string, string
                 elif type in text_tokens:
                     yield "text", string
