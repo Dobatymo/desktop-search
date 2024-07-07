@@ -9,7 +9,6 @@ PP_CODES = [[], ["I'm", "a", "software", "engineer!"], ["def", "test_text(self):
 
 
 class PreprocessTest(TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.pp = Preprocess()

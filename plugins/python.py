@@ -19,7 +19,7 @@ class PythonPlugin(TokenizerPlugin):
         text_tokens = (tokenize.STRING, tokenize.COMMENT)
 
         with tokenize.open(path) as fr:
-            for type, string, start, end, line in tokenize.generate_tokens(fr.readline):
+            for type, string, _start, _end, _line in tokenize.generate_tokens(fr.readline):
                 if type in code_tokens:
                     yield "code", string
                     assert " " not in string, string

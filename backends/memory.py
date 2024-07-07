@@ -103,11 +103,11 @@ class InvertedIndexMemory:
         if self.keep_docs:
             for name, field_freqs in self.doc_freqs.items():
                 index = self.table[name]
-                for token, freq in field_freqs[doc_id].items():
+                for token, _freq in field_freqs[doc_id].items():
                     del index[token][doc_id]
         else:
-            for name, index in self.table.items():
-                for token, freqs in index.items():
+            for _name, index in self.table.items():
+                for _token, freqs in index.items():
                     freqs.pop(doc_id, None)
 
     def get_docs(self, field: str, token: str) -> Dict[int, int]:

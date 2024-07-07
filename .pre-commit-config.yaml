@@ -1,7 +1,7 @@
 exclude: static/
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.5.0
+  rev: v4.6.0
   hooks:
   - id: check-added-large-files
   - id: check-case-conflict
@@ -19,21 +19,21 @@ repos:
   - id: trailing-whitespace
     args: [--markdown-linebreak-ext=md]
 - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-  rev: v2.12.0
+  rev: v2.13.0
   hooks:
   - id: pretty-format-yaml
     args: [--autofix]
 - repo: https://github.com/tox-dev/pyproject-fmt
-  rev: 1.7.0
+  rev: 2.1.4
   hooks:
   - id: pyproject-fmt
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.15.1
+  rev: v3.16.0
   hooks:
   - id: pyupgrade
     args: [--py37-plus]
 - repo: https://github.com/psf/black-pre-commit-mirror
-  rev: 24.3.0
+  rev: 24.4.2
   hooks:
   - id: black
 - repo: https://github.com/PyCQA/isort
@@ -41,17 +41,23 @@ repos:
   hooks:
   - id: isort
 - repo: https://github.com/PyCQA/bandit
-  rev: 1.7.8
+  rev: 1.7.9
   hooks:
   - id: bandit
     args: [-c, pyproject.toml]
     additional_dependencies: ['.[toml]']
 - repo: https://github.com/pycqa/flake8
-  rev: 7.0.0
+  rev: 7.1.0
   hooks:
   - id: flake8
+    additional_dependencies:
+    - flake8-annotations
+    - flake8-bugbear
+    - flake8-eradicate
+    - flake8-mutable
+    - flake8-simplify
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.9.0
+  rev: v1.10.1
   hooks:
   - id: mypy
     args: [--ignore-missing-imports, --install-types, --non-interactive]
