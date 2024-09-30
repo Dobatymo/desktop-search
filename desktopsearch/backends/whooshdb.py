@@ -8,7 +8,7 @@ from whoosh.filedb.filestore import FileStorage
 from whoosh.qparser import QueryParser
 from whoosh.query import And, Or, Term
 
-from utils import IndexerBase, RetrieverBase
+from ..utils import IndexerBase, RetrieverBase
 
 SearchResult = Tuple[Path, Union[int, float, None]]
 

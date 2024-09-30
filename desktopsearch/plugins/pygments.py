@@ -6,8 +6,8 @@ from pygments.lexers import get_lexer_for_filename
 from pygments.token import Token
 from pygments.util import ClassNotFound
 
-from nlp import Preprocess
-from plugin import NoLexerFound, TokenizerPlugin
+from ..nlp import Preprocess
+from ..plugin import NoLexerFound, TokenizerPlugin
 
 
 class PygmentsPlugin(TokenizerPlugin):

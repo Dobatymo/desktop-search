@@ -2,7 +2,6 @@ from backend.memory import IndexerMemory, InvertedIndexMemory, RetrieverMemory
 from genutility.json import read_json
 from genutility.rich import Progress
 from rich.progress import Progress as RichProgress
-
 from utils import CodeAnalyzer, valid_groups
 
 

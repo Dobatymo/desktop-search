@@ -8,7 +8,7 @@ from typing import Any, Callable, DefaultDict, Dict, Iterable, List, Optional, S
 
 from genutility.exceptions import assert_choice
 
-from utils import CodeAnalyzer, IndexerBase, IndexerError, InvalidDocument, NotAnalyzable, RetrieverBase
+from ..utils import CodeAnalyzer, IndexerBase, IndexerError, InvalidDocument, NotAnalyzable, RetrieverBase
 
 OptionalSearchResult = Tuple[Optional[Path], Union[int, float]]
 SearchResult = Tuple[Path, Union[int, float]]

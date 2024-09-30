@@ -3,8 +3,8 @@ from unittest import TestCase
 
 from genutility.test import parametrize
 
-from backends.memory import InvertedIndexMemory
-from utils import CodeAnalyzer
+from desktopsearch.backends.memory import InvertedIndexMemory
+from desktopsearch.utils import CodeAnalyzer
 
 
 class MemoryTest(TestCase):

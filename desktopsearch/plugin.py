@@ -5,7 +5,7 @@ from typing import Any
 from typing import Counter as CounterT
 from typing import DefaultDict, Dict, Iterator, List, Optional, Tuple, Type
 
-from nlp import DEFAULT_CONFIG, Preprocess
+from .nlp import DEFAULT_CONFIG, Preprocess
 
 
 class NoLexerFound(Exception):

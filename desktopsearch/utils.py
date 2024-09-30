@@ -7,8 +7,10 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set,
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
-from nlp import DEFAULT_CONFIG, Preprocess
-from plugin import TokenizerPlugin
+from .nlp import DEFAULT_CONFIG, Preprocess
+from .plugin import TokenizerPlugin
+
+DEFAULT_IGNORE = [".git"]
 
 
 class InvalidDocument(KeyError):
@@ -41,7 +43,7 @@ def _gitignore_iterdir(path: Path, spec: PathSpec) -> Iterator[Path]:
                 yield from _gitignore_iterdir(item, spec)
 
 
-def gitignore_iterdir(path: Path, defaultignore: Sequence[str] = [".git"]) -> Iterator[Path]:
+def gitignore_iterdir(path: Path, defaultignore: Sequence[str] = DEFAULT_IGNORE) -> Iterator[Path]:
     spec = PathSpec.from_lines(GitWildMatchPattern, defaultignore)
     return _gitignore_iterdir(path, spec)
 
@@ -69,7 +71,7 @@ class CodeAnalyzer:
 
         for modname, clsname in cls.lexers.items():
             try:
-                module = import_module(f"plugins.{modname}")
+                module = import_module(f".plugins.{modname}", package=__package__)
             except ImportError as e:
                 logging.warning("Could not import %s: %s", modname, e)
                 continue

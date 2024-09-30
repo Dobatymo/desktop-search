@@ -1,7 +1,7 @@
 from collections import Counter
 from unittest import TestCase
 
-from nlp import DEFAULT_CONFIG, Preprocess
+from desktopsearch.nlp import DEFAULT_CONFIG, Preprocess
 
 TEXTS = ["", "I'm a software engineer!", "def test_text(self):"]
 PP_TEXTS = [[], ["i", "'m", "a", "software", "engineer", "!"], ["def", "test_text(self", "):"]]

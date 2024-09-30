@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Iterator, Tuple
 
-from plugin import TokenizerPlugin
+from ..plugin import TokenizerPlugin
 
 
 class PlaintextPlugin(TokenizerPlugin):

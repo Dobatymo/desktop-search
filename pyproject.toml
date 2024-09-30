@@ -1,8 +1,6 @@
 [build-system]
 build-backend = "poetry.core.masonry.api"
-requires = [
-  "poetry-core>=1",
-]
+requires = [ "poetry-core" ]
 
 [tool.poetry]
 name = "desktop-search"
@@ -11,10 +9,14 @@ description = "Full text search for code and text files"
 authors = [
   "Dobatymo <Dobatymo@users.noreply.github.com>",
 ]
+readme = "readme.md"
 license = "ISC license"
+packages = [
+  { include = "desktopsearch" },
+]
 
 [tool.poetry.scripts]
-app = "wsgi:main"
+app = "desktopsearch.wsgi:main"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
@@ -35,9 +37,10 @@ genutility = { extras = [
   "pickle",
   "rich",
   "time",
-], version = ">=0.0.102" }
+], version = ">=0.0.108" }
 Pympler = ">=1.0.1"
 Whoosh = ">=2.7.4"
+importlib-resources = ">=6.0.0"
 
 [tool.poetry.dev-dependencies]
 

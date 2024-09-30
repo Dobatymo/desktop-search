@@ -16,14 +16,16 @@ from flask import Flask, abort, flash, make_response, redirect, render_template,
 from genutility.file import read_file
 from genutility.json import read_json, write_json
 from genutility.pickle import read_pickle, write_pickle
-from genutility.rich import Progress
+from genutility.rich import Progress, StripAnsiHighlighter
 from genutility.time import MeasureTime
+from importlib_resources import as_file, files
 from jsonschema import ValidationError
 from markupsafe import Markup
 from platformdirs import user_data_dir
+from rich.logging import RichHandler
 from rich.progress import Progress as RichProgress
 
-from backends.memory import (
+from .backends.memory import (
     OP_METHODS,
     SCORING_METHODS,
     SORTBY_METHODS,
@@ -31,8 +33,8 @@ from backends.memory import (
     InvertedIndexMemory,
     RetrieverMemory,
 )
-from nlp import DEFAULT_CONFIG as DEFAULT_NLP_CONFIG
-from utils import CodeAnalyzer, IndexerError, valid_groups
+from .nlp import DEFAULT_CONFIG as DEFAULT_NLP_CONFIG
+from .utils import CodeAnalyzer, IndexerError, valid_groups
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -67,8 +69,10 @@ retriever = None
 def read_config() -> dict:
     assert appdata_dir
     config_path = appdata_dir / CONFIG_FILE
+    schema = files(__package__).joinpath("config.schema.json")
     try:
-        return read_json(config_path, schema="config.schema.json")
+        with as_file(schema) as config_schema_path:
+            return read_json(config_path, schema=os.fspath(config_schema_path))
     except FileNotFoundError:
         return DEFAULT_CONFIG
     except (json.JSONDecodeError, ValidationError) as e:
@@ -338,10 +342,13 @@ def main():
     parser.add_argument("--appdata-dir", type=is_dir, default=DEFAULT_APPDATA_DIR, help="Path to appdata directory")
     args = parser.parse_args()
 
+    handler = RichHandler(log_time_format="%Y-%m-%d %H-%M-%S%Z", highlighter=StripAnsiHighlighter())
+    FORMAT = "%(message)s"
+
     if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG, format=FORMAT, handlers=[handler])
     else:
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.INFO, format=FORMAT, handlers=[handler])
 
     appdata_dir = args.appdata_dir
     config = read_config()
