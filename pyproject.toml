@@ -20,17 +20,17 @@ app = "desktopsearch.wsgi:main"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
-Flask = ">=2.3.2"
-MarkupSafe = ">=2.1.1"
-platformdirs = ">=3.5.0"
-"calmjs.parse" = ">=1.3.0"
-cheroot = ">=8.6.0"
-humanize = ">=4.0.0"
-jsonschema = ">=4.4.0"
-pathspec = ">=0.11.1"
-Pygments = ">=2.11.2"
+Flask = ">=3.0.3"
+MarkupSafe = ">=2.1.5"
+platformdirs = ">=4.3.6"
+"calmjs.parse" = ">=1.3.2"
+cheroot = ">=10.0.1"
+humanize = ">=4.10.0"
+jsonschema = ">=4.23.0"
+pathspec = ">=0.12.1"
+Pygments = ">=2.18.0"
 spacy = ">=3.5.2"
-rich = ">=12.0.0"
+rich = ">=13.9.3"
 genutility = { extras = [
   "file",
   "json",
@@ -38,7 +38,7 @@ genutility = { extras = [
   "rich",
   "time",
 ], version = ">=0.0.108" }
-Pympler = ">=1.0.1"
+Pympler = ">=1.1"
 Whoosh = ">=2.7.4"
 importlib-resources = ">=6.0.0"
 

@@ -1,7 +1,7 @@
 exclude: desktopsearch/static/
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.6.0
+  rev: v5.0.0
   hooks:
   - id: check-added-large-files
   - id: check-case-conflict
@@ -31,7 +31,7 @@ repos:
   rev: v3.16.0
   hooks:
   - id: pyupgrade
-    args: [--py37-plus]
+    args: [--py38-plus]
 - repo: https://github.com/psf/black-pre-commit-mirror
   rev: 24.8.0
   hooks:
@@ -62,7 +62,7 @@ repos:
   - id: mypy
     args: [--ignore-missing-imports, --install-types, --non-interactive]
     additional_dependencies:
-    - calmjs.parse==1.3.1  # optional
+    - calmjs.parse==1.3.2  # optional
     - cheroot==10.0.1
     - flask==3.0.3
     - genutility[file,json,pickle,rich,time]==0.0.108
@@ -70,11 +70,12 @@ repos:
     - jsonschema==4.23.0
     - MarkupSafe==2.1.5
     - pathspec==0.12.1
-    - platformdirs==4.2.0
+    - platformdirs==4.3.6
     - Pygments==2.18.0  # optional
     - Pympler==1.1
-    - rich==13.7.1
+    - rich==13.9.3
     - spacy==3.7.4
+    - Whoosh==2.7.4
 - repo: https://github.com/Yelp/detect-secrets
   rev: v1.5.0
   hooks:
