@@ -98,7 +98,7 @@ class InvertedIndexMemory:
             doc_id = self.docs2ids[path]
             self.ids2docs[doc_id] = None  # keep doc_id for later reuse, but mark as removed
         except KeyError:
-            raise InvalidDocument(path)
+            raise InvalidDocument(path) from None
 
         if self.keep_docs:
             for name, field_freqs in self.doc_freqs.items():
@@ -203,7 +203,7 @@ class RetrieverMemory(RetrieverBase):
                 ),
             )
         except TypeError as e:
-            raise RuntimeError(e)
+            raise RuntimeError(e) from e
 
         if sortby == "path":
             return sorted(filtered_paths, key=itemgetter(0), reverse=False)

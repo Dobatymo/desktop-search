@@ -27,8 +27,8 @@ class PygmentsPlugin(TokenizerPlugin):
         except KeyError:
             try:
                 lexer = self.cache[path.suffix] = get_lexer_for_filename(path.name)
-            except ClassNotFound:
-                raise NoLexerFound()
+            except ClassNotFound as e:
+                raise NoLexerFound() from e
 
         text = read_file(path, "rt", encoding="utf-8")
 

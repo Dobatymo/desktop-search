@@ -94,9 +94,9 @@ class CodeAnalyzer:
     def analyze(self, path: Path) -> Dict[str, Dict[str, int]]:
         try:
             lexer = self.tokenizers[path.suffix]
-        except KeyError:
+        except KeyError as e:
             logging.debug("Ignoring %s (invalid suffix)", path)
-            raise NotAnalyzable()
+            raise NotAnalyzable() from e
 
         return lexer.tokenize(path)
 

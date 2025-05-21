@@ -1,9 +1,8 @@
 import logging
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, DefaultDict, Dict, Iterator, List, Optional, Tuple, Type
 from typing import Counter as CounterT
-from typing import DefaultDict, Dict, Iterator, List, Optional, Tuple, Type
 
 from .nlp import DEFAULT_CONFIG, Preprocess
 

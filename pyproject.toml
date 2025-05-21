@@ -1,55 +1,53 @@
 [build-system]
-build-backend = "poetry.core.masonry.api"
-requires = [ "poetry-core" ]
+build-backend = "flit_core.buildapi"
+requires = [ "flit-core>=3.11,<4" ]
 
-[tool.poetry]
+[project]
 name = "desktop-search"
 version = "0.1.0"
 description = "Full text search for code and text files"
-authors = [
-  "Dobatymo <Dobatymo@users.noreply.github.com>",
-]
 readme = "readme.md"
-license = "ISC license"
-packages = [
-  { include = "desktopsearch" },
+license = "ISC"
+authors = [ { name = "Dobatymo", email = "Dobatymo@users.noreply.github.com" } ]
+requires-python = ">=3.8"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
+dependencies = [
+  "calmjs-parse>=1.3.2",
+  "cheroot>=10.0.1",
+  "en-core-web-sm",
+  "flask>=3.0.3",
+  "genutility[file,json,pickle,rich,time]>=0.0.108",
+  "humanize>=4.10",
+  "importlib-resources>=6",
+  "jsonschema>=4.23",
+  "markupsafe>=2.1.5",
+  "numpy<2",                                         # for spacy==3.7.5
+  "pathspec>=0.12.1",
+  "platformdirs>=4.3.6",
+  "pygments>=2.18",
+  "pympler>=1.1",
+  "rich>=13.9.3",
+  "spacy>=3.7",
+  "whoosh>=2.7.4",
+]
+urls.Homepage = "https://github.com/Dobatymo/desktop-search"
+scripts.desktop-search = "desktopsearch.wsgi:main"
 
-[tool.poetry.scripts]
-app = "desktopsearch.wsgi:main"
-
-[tool.poetry.dependencies]
-python = ">=3.8,<4.0"
-Flask = ">=3.0.3"
-MarkupSafe = ">=2.1.5"
-platformdirs = ">=4.3.6"
-"calmjs.parse" = ">=1.3.2"
-cheroot = ">=10.0.1"
-humanize = ">=4.10.0"
-jsonschema = ">=4.23.0"
-pathspec = ">=0.12.1"
-Pygments = ">=2.18.0"
-spacy = ">=3.5.2"
-rich = ">=13.9.3"
-genutility = { extras = [
-  "file",
-  "json",
-  "pickle",
-  "rich",
-  "time",
-], version = ">=0.0.108" }
-Pympler = ">=1.1"
-Whoosh = ">=2.7.4"
-importlib-resources = ">=6.0.0"
-
-[tool.poetry.dev-dependencies]
+[tool.flit.module]
+name = "desktopsearch"
 
 [tool.black]
 line-length = 120
 
 [tool.ruff]
 line-length = 120
-
 lint.extend-select = [
   "B",
   "I",
@@ -62,7 +60,23 @@ lint.ignore = [
 profile = "black"
 line_length = 120
 
+[tool.mypy]
+allow_redefinition = true
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_unreachable = true
+
 [tool.bandit]
-skips = [
-  "B101",
+skips = [ "B101" ]
+
+[tool.uv.sources]
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz" }
+
+[dependency-groups]
+test = [
+  "pytest>=7",
+  "genutility[test]>=0.0.100",
 ]

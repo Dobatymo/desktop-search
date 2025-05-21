@@ -1,6 +1,5 @@
-from typing import Any
+from typing import Any, Dict, Iterable, List
 from typing import Counter as CounterT
-from typing import Dict, Iterable, List
 
 import spacy
 
