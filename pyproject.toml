@@ -68,6 +68,7 @@ warn_redundant_casts = true
 warn_unused_configs = true
 warn_unused_ignores = true
 warn_unreachable = true
+strict_equality = true
 
 [tool.bandit]
 skips = [ "B101" ]

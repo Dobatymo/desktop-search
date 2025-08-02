@@ -1,8 +1,8 @@
 {
 	"groups": {
 		"private": [
-			"D:/my-epositories",
-			"E:/my-epositories",
+			"D:/my-repositories",
+			"E:/my-repositories",
 		],
 		"library": [
 			"C:/Python38/Lib",
